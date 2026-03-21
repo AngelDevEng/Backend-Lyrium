@@ -440,7 +440,7 @@ class ProductSeeder extends Seeder
                 'rating_promedio' => 4.6,
                 'rating_count' => 78,
                 'categories' => ['productos-belleza'],
-                'image' => '/storage/img/productos/Blanqueamiento-Dental.png',
+                'image' => '/storage/img/productos/servicios-medicos/blanqueamiento-dental.png',
             ],
             [
                 'name' => 'Diagnóstico Unipolar de Salud',
@@ -457,7 +457,7 @@ class ProductSeeder extends Seeder
                 'rating_promedio' => 4.8,
                 'rating_count' => 45,
                 'categories' => ['productos-suplementos'],
-                'image' => '/storage/img/productos/Diagnostico-unipolar.png',
+                'image' => '/storage/img/productos/servicios-medicos/Diagnostico unipolar.png',
             ],
             [
                 'name' => 'Masajes Corporales Relajantes',
@@ -474,7 +474,7 @@ class ProductSeeder extends Seeder
                 'rating_promedio' => 4.9,
                 'rating_count' => 112,
                 'categories' => ['productos-belleza'],
-                'image' => '/storage/img/productos/Masajes-Corporales.png',
+                'image' => '/storage/img/productos/servicios-medicos/masajes-corporales.png',
             ],
             [
                 'name' => 'Programas de Rehabilitación Integral',
@@ -491,7 +491,7 @@ class ProductSeeder extends Seeder
                 'rating_promedio' => 4.7,
                 'rating_count' => 34,
                 'categories' => ['productos-bienestar-fisico'],
-                'image' => '/storage/img/productos/Programas-Rehabilitacion-Integral.png',
+                'image' => '/storage/img/productos/belleza/banner-principal-cremas.png',
             ],
         ];
 
