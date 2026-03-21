@@ -9,10 +9,10 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::firstOrCreate(['email' => 'admin@lyrium.com'], [
-            'name' => 'Admin Lyrium',
-            'username' => 'admin',
-            'nicename' => 'admin-lyrium',
+        $admin = User::firstOrCreate(['email' => 'angel.enginner08@gmail.com'], [
+            'name' => 'Angel Engineer',
+            'username' => 'angel_engineer',
+            'nicename' => 'angel-engineer',
             'is_admin' => true,
             'password' => 'password',
             'email_verified_at' => now(),
@@ -20,11 +20,10 @@ class AdminUserSeeder extends Seeder
 
         $admin->assignRole('administrator');
 
-        // Seller de prueba
-        $seller = User::firstOrCreate(['email' => 'vendedor@lyrium.com'], [
-            'name' => 'Vendedor Demo',
-            'username' => 'vendedor_demo',
-            'nicename' => 'vendedor-demo',
+        $seller = User::firstOrCreate(['email' => 'angel.ipanaque.torre@gmail.com'], [
+            'name' => 'Angel Ipanque',
+            'username' => 'angel_ipanaque',
+            'nicename' => 'angel-ipanaque',
             'is_seller' => true,
             'phone' => '999888777',
             'document_type' => 'RUC',
@@ -35,7 +34,6 @@ class AdminUserSeeder extends Seeder
 
         $seller->assignRole('seller');
 
-        // Crear tienda aprobada para el vendedor demo
         \App\Models\Store::firstOrCreate(['ruc' => '20123456789'], [
             'owner_id' => $seller->id,
             'trade_name' => 'BioTienda Demo',

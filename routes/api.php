@@ -12,6 +12,9 @@ use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\BenefitController;
 use App\Http\Controllers\Api\NewsletterController;
+use App\Http\Controllers\Api\TicketController;
+use App\Http\Controllers\Api\AdminTicketController;
+use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -68,6 +71,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::put('/users/{id}', [UserController::class, 'update']);
 
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/{id}', [NotificationController::class, 'show']);
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'read']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+
     /*
     |----------------------------------------------------------------------
     | Admin
@@ -108,6 +118,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/contracts/{id}/upload', [ContractController::class, 'upload']);
         Route::get('/contracts/{id}/download', [ContractController::class, 'download']);
         Route::delete('/contracts/{id}', [ContractController::class, 'destroy']);
+
+        // Tickets — Admin (Mesa de Ayuda)
+        Route::prefix('admin/tickets')->group(function () {
+            Route::get('/', [AdminTicketController::class, 'index']);
+            Route::get('/{id}', [AdminTicketController::class, 'show']);
+            Route::post('/{id}/messages', [AdminTicketController::class, 'sendMessage']);
+            Route::put('/{id}/status', [AdminTicketController::class, 'updateStatus']);
+            Route::put('/{id}/assign', [AdminTicketController::class, 'assign']);
+            Route::put('/{id}/priority', [AdminTicketController::class, 'updatePriority']);
+            Route::put('/{id}/escalate', [AdminTicketController::class, 'escalate']);
+        });
     });
 
     /*
@@ -125,5 +146,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/products/{id}', [ProductController::class, 'update']);
         Route::delete('/products/{id}', [ProductController::class, 'destroy']);
         Route::put('/products/{id}/stock', [ProductController::class, 'updateStock']);
+
+        // Tickets — Vendedor (Mesa de Ayuda)
+        Route::prefix('tickets')->group(function () {
+            Route::get('/', [TicketController::class, 'index']);
+            Route::post('/', [TicketController::class, 'store']);
+            Route::get('/{id}', [TicketController::class, 'show']);
+            Route::post('/{id}/messages', [TicketController::class, 'sendMessage']);
+            Route::put('/{id}/close', [TicketController::class, 'close']);
+            Route::post('/{id}/survey', [TicketController::class, 'submitSurvey']);
+        });
     });
 });
