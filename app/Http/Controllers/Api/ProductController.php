@@ -56,7 +56,7 @@ final class ProductController extends Controller
         }
 
         if ($request->boolean('on_sale')) {
-            $query->whereNotNull('sale_price');
+            $query->where('discount_percentage', '>', 0);
         }
 
         if ($request->boolean('new')) {
