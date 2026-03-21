@@ -362,23 +362,92 @@ class ProductSeeder extends Seeder
                 'rating_count' => 67,
                 'categories' => ['alimentos-organicos', 'suplementos'],
             ],
+            // SERVICIOS - Las mejores ofertas de Servicios
+            [
+                'name' => 'Ecografía Obstétrica',
+                'slug' => 'ecografia-obstetrica',
+                'description' => 'Ecografía obstétrica de alta resolución para seguimiento del embarazo. Imágenes 4D del bebé.',
+                'short_description' => 'Ecografía obstétrica 4D',
+                'price' => 120.00,
+                'regular_price' => 150.00,
+                'stock' => 10,
+                'sticker' => 'oferta',
+                'status' => 'approved',
+                'type' => 'service',
+                'sku' => 'SER-ECO-001',
+                'rating_promedio' => 4.9,
+                'rating_count' => 45,
+                'categories' => ['servicios-medicos'],
+                'image' => '/storage/img/productos/Ecografía obstetrica.png',
+                'service_duration' => 30,
+                'service_modality' => 'presencial',
+                'service_location' => 'Consultorio médico',
+            ],
+            [
+                'name' => 'Profilaxis y Destartraje con Fluor',
+                'slug' => 'profilaxis-destartraje-fluor',
+                'description' => 'Limpieza dental profesional con ultrasonido, pulido y aplicación de fluoruro. Previene caries y enfermedades periodontales.',
+                'short_description' => 'Limpieza dental con fluor',
+                'price' => 80.00,
+                'regular_price' => 100.00,
+                'stock' => 20,
+                'sticker' => 'oferta',
+                'status' => 'approved',
+                'type' => 'service',
+                'sku' => 'SER-DEN-001',
+                'rating_promedio' => 4.8,
+                'rating_count' => 89,
+                'categories' => ['servicios-medicos'],
+                'image' => '/storage/img/productos/Profilaxis DestartajeFluor.png',
+                'service_duration' => 45,
+                'service_modality' => 'presencial',
+                'service_location' => 'Clínica dental',
+            ],
+            [
+                'name' => 'Riquezas Campesinas - Pack Saludable',
+                'slug' => 'riquezas-campesinas-pack',
+                'description' => 'Servicio de asesoría nutricional personalizada con productos orgánicos de productores locales.',
+                'short_description' => 'Asesoría nutricional con productos orgánicos',
+                'price' => 95.00,
+                'regular_price' => 120.00,
+                'stock' => 15,
+                'sticker' => 'oferta',
+                'status' => 'approved',
+                'type' => 'service',
+                'sku' => 'SER-NUT-001',
+                'rating_promedio' => 4.7,
+                'rating_count' => 32,
+                'categories' => ['servicios-medicos'],
+                'image' => '/storage/img/productos/riquezas-campesinas.png',
+                'service_duration' => 60,
+                'service_modality' => 'presencial',
+                'service_location' => 'Domicilio del cliente',
+            ],
         ];
 
         foreach ($products as $data) {
-            $categories = $data['categories'];
+            $categories = $data['categories'] ?? [];
+            $image = $data['image'] ?? null;
             unset($data['categories']);
             unset($data['sticker']);
+            unset($data['image']);
 
             if (Product::where('slug', $data['slug'])->exists()) {
                 continue;
             }
 
-            $product = Product::create(array_merge($data, [
+            $productData = array_merge($data, [
                 'store_id' => $store->id,
                 'discount_percentage' => $data['regular_price'] > $data['price']
                     ? round((($data['regular_price'] - $data['price']) / $data['regular_price']) * 100, 2)
                     : 0,
-            ]));
+            ]);
+
+            if ($image) {
+                $productData['image'] = $image;
+            }
+
+            $product = Product::create($productData);
 
             foreach ($categories as $catSlug) {
                 $category = Category::where('slug', $catSlug)->first();
