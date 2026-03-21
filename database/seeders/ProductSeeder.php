@@ -13,7 +13,6 @@ class ProductSeeder extends Seeder
     public function run(): void
     {
         config(['scout.driver' => null]);
-        Product::disableSearchSyncing();
 
         $store = Store::where('slug', 'biotienda-demo')->first();
 
@@ -392,7 +391,5 @@ class ProductSeeder extends Seeder
         }
 
         $this->command->info('ProductSeeder: ' . Product::count() . ' products seeded.');
-
-        Product::enableSearchSyncing();
     }
 }
