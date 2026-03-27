@@ -19,7 +19,7 @@ final class GoogleAuthService
             'id_token' => $credential,
         ]);
 
-        if (!$response->ok()) {
+        if (! $response->ok()) {
             return null;
         }
 
@@ -69,7 +69,7 @@ final class GoogleAuthService
         $baseUsername = $username;
         $counter = 1;
         while (User::where('username', $username)->exists()) {
-            $username = $baseUsername . '_' . $counter++;
+            $username = $baseUsername.'_'.$counter++;
         }
 
         $user = User::create([

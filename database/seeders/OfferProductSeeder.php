@@ -12,8 +12,9 @@ class OfferProductSeeder extends Seeder
     public function run(): void
     {
         $store = Store::first();
-        if (!$store) {
+        if (! $store) {
             $this->command->warn('No se encontró tienda. Ejecuta primero AdminUserSeeder.');
+
             return;
         }
 

@@ -36,7 +36,7 @@ trait WithRoles
         ]);
         $user->assignRole('seller');
 
-        if (!$store) {
+        if (! $store) {
             Store::factory()->approved()->create(['owner_id' => $user->id]);
         }
 

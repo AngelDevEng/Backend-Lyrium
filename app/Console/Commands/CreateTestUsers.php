@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
 use App\Models\Store;
+use App\Models\User;
 use Illuminate\Console\Command;
 
 class CreateTestUsers extends Command
@@ -18,7 +18,7 @@ class CreateTestUsers extends Command
 
         $this->info('Buscando usuarios existentes (incluyendo eliminados)...');
         $allUsers = User::withTrashed()->select('id', 'name', 'email', 'username', 'is_admin', 'is_seller', 'deleted_at')->get();
-        
+
         foreach ($allUsers as $user) {
             $deleted = $user->deleted_at ? ' [ELIMINADO]' : '';
             $this->line("ID: {$user->id}, Email: {$user->email}, Username: {$user->username}{$deleted}");
@@ -143,9 +143,9 @@ class CreateTestUsers extends Command
         $this->warn('===========================================');
         $this->warn('   CREDITENCIALES DE PRUEBA');
         $this->warn('===========================================');
-        $this->info('Admin:    ' . $adminEmail);
-        $this->info('Vendedor: ' . $sellerEmail);
-        $this->info('Contraseña para ambos: ' . $password);
+        $this->info('Admin:    '.$adminEmail);
+        $this->info('Vendedor: '.$sellerEmail);
+        $this->info('Contraseña para ambos: '.$password);
         $this->newLine();
 
         return Command::SUCCESS;

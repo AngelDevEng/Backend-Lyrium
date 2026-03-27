@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\EmailVerificationCode;
-use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 use Tests\Traits\WithRoles;
 

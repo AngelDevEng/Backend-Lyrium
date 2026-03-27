@@ -57,7 +57,7 @@ final class Contract extends Model
 
     public function getExpiryUrgencyAttribute(): string
     {
-        if (!$this->end_date) {
+        if (! $this->end_date) {
             return 'normal';
         }
 

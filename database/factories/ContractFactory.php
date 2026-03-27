@@ -18,7 +18,7 @@ final class ContractFactory extends Factory
     public function definition(): array
     {
         return [
-            'contract_number' => 'CTR-' . now()->year . '-' . fake()->unique()->numerify('###'),
+            'contract_number' => 'CTR-'.now()->year.'-'.fake()->unique()->numerify('###'),
             'store_id' => Store::factory(),
             'company' => fake()->company(),
             'ruc' => fake()->numerify('###########'),

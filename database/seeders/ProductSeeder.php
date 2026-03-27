@@ -6,7 +6,6 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Store;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class ProductSeeder extends Seeder
 {
@@ -18,6 +17,7 @@ class ProductSeeder extends Seeder
 
         if (! $store) {
             $this->command->warn('Store biotienda-demo not found. Skipping ProductSeeder.');
+
             return;
         }
 
@@ -529,6 +529,6 @@ class ProductSeeder extends Seeder
             $product->save();
         }
 
-        $this->command->info('ProductSeeder: ' . Product::count() . ' products seeded.');
+        $this->command->info('ProductSeeder: '.Product::count().' products seeded.');
     }
 }

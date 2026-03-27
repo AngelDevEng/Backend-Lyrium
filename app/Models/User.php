@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -15,7 +15,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasApiTokens, HasRoles, SoftDeletes;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -24,8 +24,14 @@ class User extends Authenticatable
         'nicename',
         'avatar',
         'phone',
+        'phone_2',
         'document_type',
         'document_number',
+        'departamento',
+        'provincia',
+        'distrito',
+        'admin_nombre',
+        'admin_dni',
         'is_seller',
         'is_admin',
         'password',
@@ -67,6 +73,7 @@ class User extends Authenticatable
     {
         if ($this->relationLoaded('ownedStores')) {
             $stores = $this->ownedStores;
+
             return $stores->firstWhere('status', 'approved') ?? $stores->first();
         }
 
@@ -77,9 +84,26 @@ class User extends Authenticatable
     // Rol para el frontend (administrator, seller, customer, logistics_operator)
     public function getFrontendRoleAttribute(): string
     {
-        if ($this->is_admin) return 'administrator';
-        if ($this->is_seller) return 'seller';
-        if ($this->hasRole('logistics_operator')) return 'logistics_operator';
+        if ($this->is_admin) {
+            return 'administrator';
+        }
+        if ($this->is_seller) {
+            return 'seller';
+        }
+        if ($this->hasRole('logistics_operator')) {
+            return 'logistics_operator';
+        }
+
         return 'customer';
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function couponUsages(): HasMany
+    {
+        return $this->hasMany(CouponUsage::class);
     }
 }

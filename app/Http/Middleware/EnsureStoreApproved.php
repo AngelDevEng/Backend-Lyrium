@@ -14,13 +14,13 @@ final class EnsureStoreApproved
     {
         $user = $request->user();
 
-        if (!$user || !$user->is_seller) {
+        if (! $user || ! $user->is_seller) {
             return response()->json(['message' => 'Se requiere cuenta de vendedor.'], 403);
         }
 
         $store = $user->store;
 
-        if (!$store || !$store->isApproved()) {
+        if (! $store || ! $store->isApproved()) {
             return response()->json(['message' => 'Tu tienda no está aprobada.'], 403);
         }
 

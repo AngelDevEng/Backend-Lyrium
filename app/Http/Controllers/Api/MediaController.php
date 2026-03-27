@@ -95,17 +95,26 @@ final class MediaController extends Controller
      */
     public function uploadStoreLogo(StoreMediaRequest $request, int $storeId): JsonResponse
     {
-        $store = Store::findOrFail($storeId);
+        try {
+            $store = Store::findOrFail($storeId);
 
-        Gate::authorize('update', $store);
+            Gate::authorize('update', $store);
 
-        $file = $request->file('file');
+            $file = $request->file('file');
 
-        $store->addMedia($file)
-            ->preservingOriginal()
-            ->toMediaCollection('logo');
+            $store->clearMediaCollection('logo');
+            $media = $store->addMedia($file)
+                ->preservingOriginal()
+                ->toMediaCollection('logo');
 
-        return $this->created(['logo' => $store->getFirstMediaUrl('logo')]);
+            $url = $store->getMedia('logo')->first()?->getUrl() ?? $store->getFirstMediaUrl('logo');
+
+            return $this->created(['logo' => $url, 'id' => $media->id]);
+        } catch (\Exception $e) {
+            \Log::error('Error uploading logo: '.$e->getMessage());
+
+            return response()->json(['message' => 'Error al subir logo', 'error' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -114,17 +123,107 @@ final class MediaController extends Controller
      */
     public function uploadStoreBanner(StoreMediaRequest $request, int $storeId): JsonResponse
     {
+        try {
+            $store = Store::findOrFail($storeId);
+
+            Gate::authorize('update', $store);
+
+            $file = $request->file('file');
+
+            $store->clearMediaCollection('banner');
+            $media = $store->addMedia($file)
+                ->preservingOriginal()
+                ->toMediaCollection('banner');
+
+            $url = $store->getMedia('banner')->first()?->getUrl() ?? $store->getFirstMediaUrl('banner');
+
+            return $this->created(['banner' => $url, 'id' => $media->id]);
+        } catch (\Exception $e) {
+            \Log::error('Error uploading banner: '.$e->getMessage());
+
+            return response()->json(['message' => 'Error al subir banner', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Upload store banner2.
+     * POST /api/stores/{storeId}/media/banner2
+     */
+    public function uploadStoreBanner2(StoreMediaRequest $request, int $storeId): JsonResponse
+    {
+        try {
+            $store = Store::findOrFail($storeId);
+
+            Gate::authorize('update', $store);
+
+            $file = $request->file('file');
+
+            $store->clearMediaCollection('banner2');
+            $media = $store->addMedia($file)
+                ->preservingOriginal()
+                ->toMediaCollection('banner2');
+
+            $url = $store->getMedia('banner2')->first()?->getUrl() ?? $store->getFirstMediaUrl('banner2');
+
+            return $this->created(['banner2' => $url, 'id' => $media->id]);
+        } catch (\Exception $e) {
+            \Log::error('Error uploading banner2: '.$e->getMessage());
+
+            return response()->json(['message' => 'Error al subir banner2', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Upload store gallery image.
+     * POST /api/stores/{storeId}/media/gallery
+     */
+    public function uploadStoreGallery(StoreMediaRequest $request, int $storeId): JsonResponse
+    {
+        try {
+            $store = Store::findOrFail($storeId);
+
+            Gate::authorize('update', $store);
+
+            $file = $request->file('file');
+
+            $media = $store->addMedia($file)
+                ->preservingOriginal()
+                ->toMediaCollection('gallery');
+
+            $url = $store->getMedia('gallery')->last()?->getUrl() ?? $store->getFirstMediaUrl('gallery');
+
+            return $this->created([
+                'id' => $media->id,
+                'url' => $url,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error uploading gallery: '.$e->getMessage());
+
+            return response()->json(['message' => 'Error al subir imagen de galería', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Delete store gallery image.
+     * DELETE /api/stores/{storeId}/media/gallery/{mediaId}
+     */
+    public function deleteStoreGallery(int $storeId, int $mediaId): JsonResponse
+    {
         $store = Store::findOrFail($storeId);
 
         Gate::authorize('update', $store);
 
-        $file = $request->file('file');
+        $media = $store->media()
+            ->where('collection_name', 'gallery')
+            ->find($mediaId);
 
-        $store->addMedia($file)
-            ->preservingOriginal()
-            ->toMediaCollection('banner');
+        if (! $media) {
+            return $this->notFound('Imagen de galería no encontrada.');
+        }
 
-        return $this->created(['banner' => $store->getFirstMediaUrl('banner')]);
+        $media->delete();
+
+        return $this->success();
     }
 
     /**
@@ -146,5 +245,90 @@ final class MediaController extends Controller
         $media->delete();
 
         return $this->success();
+    }
+
+    /**
+     * Upload store policy PDF.
+     * POST /api/stores/{storeId}/media/policy
+     * Body: { "file": <PDF>, "type": "shipping|return|privacy" }
+     */
+    public function uploadStorePolicy(Request $request, int $storeId): JsonResponse
+    {
+        try {
+            $store = Store::findOrFail($storeId);
+
+            if (! $request->user()->is_admin && $store->owner_id !== $request->user()->id) {
+                return response()->json(['message' => 'No tienes permiso para actualizar esta tienda.'], 403);
+            }
+
+            $data = $request->validate([
+                'file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+                'type' => ['required', 'string', 'in:shipping,return,privacy'],
+            ]);
+
+            $file = $data['file'];
+            $type = $data['type'];
+
+            $existingMedia = $store->media()
+                ->where('collection_name', 'policies')
+                ->whereJsonContains('custom_properties->type', $type)
+                ->first();
+
+            if ($existingMedia) {
+                $existingMedia->delete();
+            }
+
+            $store->addMedia($file)
+                ->usingFileName("{$type}_policy.pdf")
+                ->withCustomProperties(['type' => $type])
+                ->toMediaCollection('policies');
+
+            return $this->created([
+                'type' => $type,
+                'url' => $store->getPolicyUrl($type),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al subir archivo.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete store policy.
+     * DELETE /api/stores/{storeId}/media/policy/{type}
+     */
+    public function deleteStorePolicy(Request $request, int $storeId, string $type): JsonResponse
+    {
+        try {
+            $store = Store::findOrFail($storeId);
+
+            if (! $request->user()->is_admin && $store->owner_id !== $request->user()->id) {
+                return response()->json(['message' => 'No tienes permiso para actualizar esta tienda.'], 403);
+            }
+
+            if (! in_array($type, ['shipping', 'return', 'privacy'])) {
+                return $this->notFound('Tipo de política no válido.');
+            }
+
+            $media = $store->media()
+                ->where('collection_name', 'policies')
+                ->whereJsonContains('custom_properties->type', $type)
+                ->first();
+
+            if (! $media) {
+                return $this->notFound('Política no encontrada.');
+            }
+
+            $media->delete();
+
+            return $this->success();
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al eliminar archivo.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

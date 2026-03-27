@@ -25,7 +25,7 @@ final class StoreFactory extends Factory
             'ruc' => fake()->numerify('###########'),
             'trade_name' => $name,
             'corporate_email' => fake()->unique()->companyEmail(),
-            'slug' => Str::slug($name) . '-' . Str::random(5),
+            'slug' => Str::slug($name).'-'.Str::random(5),
             'description' => fake()->sentence(),
             'status' => 'pending',
             'seller_type' => 'products',

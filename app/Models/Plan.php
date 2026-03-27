@@ -16,6 +16,7 @@ final class Plan extends Model
         'commission_rate',
         'has_membership_fee',
         'features',
+        'detailed_benefits',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ final class Plan extends Model
             'commission_rate' => 'decimal:4',
             'has_membership_fee' => 'boolean',
             'features' => 'array',
+            'detailed_benefits' => 'array',
         ];
     }
 

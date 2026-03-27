@@ -15,6 +15,7 @@ class ClearBanners extends Command
     {
         Banner::truncate();
         $this->info('Banners cleared.');
+
         return self::SUCCESS;
     }
 }

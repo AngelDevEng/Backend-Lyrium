@@ -84,7 +84,7 @@ final class AdminTicketController extends Controller
             ], 422);
         }
 
-        if (!$ticket->assigned_admin_id) {
+        if (! $ticket->assigned_admin_id) {
             $ticket->update(['assigned_admin_id' => $request->user()->id]);
         }
 

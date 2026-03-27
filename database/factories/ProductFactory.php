@@ -24,7 +24,7 @@ final class ProductFactory extends Factory
             'store_id' => Store::factory(),
             'type' => 'physical',
             'name' => $name,
-            'slug' => Str::slug($name) . '-' . Str::random(5),
+            'slug' => Str::slug($name).'-'.Str::random(5),
             'description' => fake()->paragraph(),
             'price' => fake()->randomFloat(2, 5, 500),
             'stock' => fake()->numberBetween(0, 200),

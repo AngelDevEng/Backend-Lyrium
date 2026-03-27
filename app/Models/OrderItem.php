@@ -12,6 +12,18 @@ final class OrderItem extends Model
 {
     use HasFactory;
 
+    public const STATUS_PENDING_SELLER = 'pending_seller';
+
+    public const STATUS_CONFIRMED = 'confirmed';
+
+    public const STATUS_PROCESSING = 'processing';
+
+    public const STATUS_SHIPPED = 'shipped';
+
+    public const STATUS_DELIVERED = 'delivered';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
     protected $fillable = [
         'order_id',
         'product_id',
@@ -45,5 +57,18 @@ final class OrderItem extends Model
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
+    }
+
+    public function getStatusLabel(): string
+    {
+        return match ($this->status) {
+            self::STATUS_PENDING_SELLER => 'Esperando confirmación del vendedor',
+            self::STATUS_CONFIRMED => 'Confirmado',
+            self::STATUS_PROCESSING => 'Preparando',
+            self::STATUS_SHIPPED => 'Enviado',
+            self::STATUS_DELIVERED => 'Entregado',
+            self::STATUS_CANCELLED => 'Cancelado',
+            default => $this->status,
+        };
     }
 }

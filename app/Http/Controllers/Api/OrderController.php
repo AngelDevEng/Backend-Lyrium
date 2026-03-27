@@ -9,7 +9,10 @@ use App\Http\Requests\Order\CreateOrderRequest;
 use App\Http\Requests\Order\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Cart;
+use App\Models\Coupon;
+use App\Models\CouponUsage;
 use App\Models\Order;
+use App\Models\OrderItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -105,23 +108,55 @@ final class OrderController extends Controller
                     'unit_price' => $item->unit_price,
                     'quantity' => $item->quantity,
                     'line_total' => $lineTotal,
-                    'status' => 'pending',
+                    'status' => 'pending_seller',
                 ];
 
                 $product->decrement('stock', $item->quantity);
             }
 
+            if ($subtotal < Order::MIN_ORDER_AMOUNT) {
+                throw new \Exception('El monto mínimo de la orden es S/ '.number_format(Order::MIN_ORDER_AMOUNT, 2).'.');
+            }
+
             $shippingCost = $data['shipping_cost'] ?? 0;
             $taxRate = 0.16;
             $taxAmount = round($subtotal * $taxRate, 2);
-            $total = $subtotal + $shippingCost + $taxAmount;
+            $discountAmount = 0;
+            $couponId = null;
+            $couponCode = null;
+
+            if (! empty($data['coupon_code'])) {
+                $coupon = Coupon::findByCode($data['coupon_code']);
+
+                if (! $coupon) {
+                    throw new \Exception('El cupón no existe.');
+                }
+
+                if (! $coupon->isValid()) {
+                    throw new \Exception('El cupón no es válido o ha expirado.');
+                }
+
+                if (! $coupon->isValidForUser($user->id)) {
+                    throw new \Exception('Ya has usado este cupón el número máximo de veces.');
+                }
+
+                $discountAmount = $coupon->calculateDiscount($subtotal);
+                $couponId = $coupon->id;
+                $couponCode = $coupon->code;
+            }
+
+            $total = $subtotal + $shippingCost + $taxAmount - $discountAmount;
+
+            if ($total < 0) {
+                $total = 0;
+            }
 
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'user_id' => $user->id,
-                'status' => 'pending',
+                'status' => Order::STATUS_PENDING_SELLER,
                 'payment_method' => $data['payment_method'] ?? null,
-                'payment_status' => 'pending',
+                'payment_status' => Order::PAYMENT_STATUS_PENDING,
                 'shipping_name' => $data['shipping_name'] ?? null,
                 'shipping_email' => $data['shipping_email'] ?? $user->email,
                 'shipping_phone' => $data['shipping_phone'] ?? null,
@@ -132,12 +167,25 @@ final class OrderController extends Controller
                 'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'tax_amount' => $taxAmount,
+                'discount_amount' => $discountAmount,
                 'total' => $total,
                 'notes' => $data['notes'] ?? null,
+                'coupon_code' => $couponCode,
+                'coupon_id' => $couponId,
             ]);
 
             foreach ($orderItems as $item) {
                 $order->items()->create($item);
+            }
+
+            if ($couponId) {
+                $coupon->incrementUsage();
+                CouponUsage::create([
+                    'coupon_id' => $couponId,
+                    'user_id' => $user->id,
+                    'order_id' => $order->id,
+                    'discount_amount' => $discountAmount,
+                ]);
             }
 
             $cart->items()->delete();
@@ -150,11 +198,15 @@ final class OrderController extends Controller
         return $this->created(new OrderResource($order));
     }
 
-    public function updateStatus(UpdateOrderStatusRequest $request, string $id): JsonResponse
+    public function confirm(Request $request, string $id): JsonResponse
     {
-        $data = $request->validated();
         $user = $request->user();
-        $order = Order::findOrFail($id);
+
+        if (! $user->is_seller && ! $user->is_admin) {
+            return $this->forbidden('Solo vendedores o administradores pueden confirmar órdenes.');
+        }
+
+        $order = Order::with(['items.product.store', 'user'])->findOrFail($id);
 
         if ($user->is_seller) {
             $storeIds = $user->stores()->pluck('stores.id');
@@ -163,32 +215,224 @@ final class OrderController extends Controller
                 return $this->forbidden('No tienes acceso a esta orden.');
             }
 
-            $sellerStatuses = ['processing', 'shipped', 'delivered', 'cancelled'];
-            if (! in_array($data['status'], $sellerStatuses)) {
+            $order->items()
+                ->whereIn('store_id', $storeIds)
+                ->where('status', OrderItem::STATUS_PENDING_SELLER)
+                ->update(['status' => OrderItem::STATUS_CONFIRMED]);
+
+            $order->refreshGlobalStatus();
+        } else {
+            $order->items()
+                ->where('status', OrderItem::STATUS_PENDING_SELLER)
+                ->update(['status' => OrderItem::STATUS_CONFIRMED]);
+            $order->update(['status' => Order::STATUS_CONFIRMED]);
+        }
+
+        $order->load(['items.product.store', 'user']);
+
+        return $this->success(new OrderResource($order));
+    }
+
+    public function updateStatus(UpdateOrderStatusRequest $request, string $id): JsonResponse
+    {
+        $data = $request->validated();
+        $user = $request->user();
+        $order = Order::with('items.product')->findOrFail($id);
+
+        $newStatus = $data['status'];
+
+        if (! in_array($newStatus, Order::STATUSES)) {
+            return $this->error('Estado no válido.', 400);
+        }
+
+        if ($user->is_seller) {
+            $storeIds = $user->stores()->pluck('stores.id');
+            $hasAccess = $order->items()->whereIn('store_id', $storeIds)->exists();
+            if (! $hasAccess) {
+                return $this->forbidden('No tienes acceso a esta orden.');
+            }
+
+            $sellerAllowedStatuses = [
+                Order::STATUS_PROCESSING,
+                Order::STATUS_SHIPPED,
+                Order::STATUS_DELIVERED,
+                Order::STATUS_CANCELLED,
+            ];
+
+            if (! in_array($newStatus, $sellerAllowedStatuses)) {
                 return $this->forbidden('No tienes permiso para cambiar a este estado.');
             }
 
-            $order->items()->whereIn('store_id', $storeIds)->update(['status' => $data['status']]);
+            $validTransitions = [
+                OrderItem::STATUS_CONFIRMED => [OrderItem::STATUS_PROCESSING, OrderItem::STATUS_CANCELLED],
+                OrderItem::STATUS_PROCESSING => [OrderItem::STATUS_SHIPPED, OrderItem::STATUS_CANCELLED],
+                OrderItem::STATUS_SHIPPED => [OrderItem::STATUS_DELIVERED, OrderItem::STATUS_CANCELLED],
+            ];
 
-            $allItems = $order->items;
-            $allStatuses = $allItems->pluck('status')->unique();
+            if ($newStatus === Order::STATUS_CANCELLED) {
+                $itemsToCancel = $order->items()
+                    ->whereIn('store_id', $storeIds)
+                    ->whereIn('status', [OrderItem::STATUS_PENDING_SELLER, OrderItem::STATUS_CONFIRMED])
+                    ->get();
 
-            if ($allStatuses->count() === 1) {
-                $order->update(['status' => $data['status']]);
+                foreach ($itemsToCancel as $item) {
+                    $item->update(['status' => OrderItem::STATUS_CANCELLED]);
+                    $item->product->increment('stock', $item->quantity);
+                }
+            } else {
+                $currentItemStatus = match ($newStatus) {
+                    Order::STATUS_PROCESSING => OrderItem::STATUS_CONFIRMED,
+                    Order::STATUS_SHIPPED => OrderItem::STATUS_PROCESSING,
+                    Order::STATUS_DELIVERED => OrderItem::STATUS_SHIPPED,
+                    default => null,
+                };
+
+                if ($currentItemStatus) {
+                    $order->items()
+                        ->whereIn('store_id', $storeIds)
+                        ->where('status', $currentItemStatus)
+                        ->update(['status' => match ($newStatus) {
+                            Order::STATUS_PROCESSING => OrderItem::STATUS_PROCESSING,
+                            Order::STATUS_SHIPPED => OrderItem::STATUS_SHIPPED,
+                            Order::STATUS_DELIVERED => OrderItem::STATUS_DELIVERED,
+                            default => $newStatus,
+                        }]);
+                }
             }
+
+            $order->refreshGlobalStatus();
+        } elseif ($user->is_admin) {
+            $order->update(['status' => $newStatus]);
+            $order->items()->update(['status' => $newStatus]);
         } else {
-            $validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
-            if (! in_array($data['status'], $validStatuses)) {
-                return $this->error('Estado no válido.', 400);
+            if ($order->user_id !== $user->id) {
+                return $this->forbidden('No tienes acceso a esta orden.');
             }
 
-            $order->update(['status' => $data['status']]);
+            if ($newStatus === Order::STATUS_DELIVERED) {
+                $order->items()
+                    ->where('status', OrderItem::STATUS_SHIPPED)
+                    ->update(['status' => OrderItem::STATUS_DELIVERED]);
+                $order->refreshGlobalStatus();
+            } elseif ($newStatus === Order::STATUS_CANCELLED) {
+                $itemsToCancel = $order->items()
+                    ->where('status', OrderItem::STATUS_PENDING_SELLER)
+                    ->get();
+
+                if ($itemsToCancel->isEmpty()) {
+                    return $this->error('Solo puedes cancelar antes de que el vendedor confirme.', 400);
+                }
+
+                foreach ($itemsToCancel as $item) {
+                    $item->update(['status' => OrderItem::STATUS_CANCELLED]);
+                    $item->product->increment('stock', $item->quantity);
+                }
+
+                $order->refreshGlobalStatus();
+            } else {
+                return $this->forbidden('No tienes permiso para cambiar a este estado.');
+            }
         }
 
         if (isset($data['payment_status'])) {
             $order->update(['payment_status' => $data['payment_status']]);
         }
 
+        $order->load(['items.product.store', 'user']);
+
+        return $this->success(new OrderResource($order));
+    }
+
+    public function confirmItem(Request $request, string $orderId, string $itemId): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user->is_seller && ! $user->is_admin) {
+            return $this->forbidden('Solo vendedores o administradores pueden confirmar items.');
+        }
+
+        $order = Order::with('items.product')->findOrFail($orderId);
+        $item = $order->items()->findOrFail($itemId);
+
+        if ($user->is_seller) {
+            $storeIds = $user->stores()->pluck('stores.id')->toArray();
+            if (! in_array($item->store_id, $storeIds)) {
+                return $this->forbidden('Este item no pertenece a tu tienda.');
+            }
+        }
+
+        if ($item->status !== OrderItem::STATUS_PENDING_SELLER) {
+            return $this->error('Este item no puede ser confirmado en su estado actual.', 400);
+        }
+
+        $item->update(['status' => OrderItem::STATUS_CONFIRMED]);
+        $order->refreshGlobalStatus();
+
+        $order->load(['items.product.store', 'user']);
+
+        return $this->success(new OrderResource($order));
+    }
+
+    public function updateItemStatus(Request $request, string $orderId, string $itemId): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', 'string', 'in:processing,shipped,delivered,cancelled'],
+        ]);
+
+        $user = $request->user();
+        $order = Order::with('items.product')->findOrFail($orderId);
+        $item = $order->items()->findOrFail($itemId);
+
+        $newStatus = $data['status'];
+
+        if ($user->is_seller) {
+            $storeIds = $user->stores()->pluck('stores.id')->toArray();
+            if (! in_array($item->store_id, $storeIds)) {
+                return $this->forbidden('Este item no pertenece a tu tienda.');
+            }
+
+            $validTransitions = [
+                OrderItem::STATUS_CONFIRMED => OrderItem::STATUS_PROCESSING,
+                OrderItem::STATUS_PROCESSING => OrderItem::STATUS_SHIPPED,
+                OrderItem::STATUS_SHIPPED => OrderItem::STATUS_DELIVERED,
+            ];
+
+            if ($newStatus === OrderItem::STATUS_CANCELLED) {
+                if (! in_array($item->status, [OrderItem::STATUS_PENDING_SELLER, OrderItem::STATUS_CONFIRMED])) {
+                    return $this->error('Este item no puede ser cancelado en su estado actual.', 400);
+                }
+
+                $item->update(['status' => OrderItem::STATUS_CANCELLED]);
+                $item->product->increment('stock', $item->quantity);
+            } else {
+                $expectedPreviousStatus = array_search($newStatus, $validTransitions);
+                if ($item->status !== $expectedPreviousStatus) {
+                    return $this->error("El item debe estar en estado '{$expectedPreviousStatus}' para cambiar a '{$newStatus}'.", 400);
+                }
+
+                $item->update(['status' => $newStatus]);
+            }
+        } elseif ($user->is_admin) {
+            if ($newStatus === OrderItem::STATUS_CANCELLED) {
+                $item->update(['status' => OrderItem::STATUS_CANCELLED]);
+                $item->product->increment('stock', $item->quantity);
+            } else {
+                $item->update(['status' => $newStatus]);
+            }
+        } else {
+            if ($order->user_id !== $user->id) {
+                return $this->forbidden('No tienes acceso a esta orden.');
+            }
+
+            if ($newStatus === OrderItem::STATUS_CANCELLED && $item->status === OrderItem::STATUS_PENDING_SELLER) {
+                $item->update(['status' => OrderItem::STATUS_CANCELLED]);
+                $item->product->increment('stock', $item->quantity);
+            } else {
+                return $this->forbidden('No tienes permiso para cambiar el estado de este item.');
+            }
+        }
+
+        $order->refreshGlobalStatus();
         $order->load(['items.product.store', 'user']);
 
         return $this->success(new OrderResource($order));

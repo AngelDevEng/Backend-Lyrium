@@ -60,7 +60,7 @@ final class TicketController extends Controller
         $user = $request->user();
         $store = $user->store;
 
-        if (!$store) {
+        if (! $store) {
             return response()->json([
                 'success' => false,
                 'message' => 'Debes tener una tienda registrada para crear tickets.',

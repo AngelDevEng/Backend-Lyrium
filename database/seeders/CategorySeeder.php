@@ -149,7 +149,7 @@ class CategorySeeder extends Seeder
                 $cat
             );
 
-            if (!empty($children)) {
+            if (! empty($children)) {
                 $this->createCategories($children, $category->id);
             }
         }

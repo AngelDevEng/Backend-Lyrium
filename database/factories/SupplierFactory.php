@@ -22,7 +22,7 @@ final class SupplierFactory extends Factory
 
         return [
             'name' => $name,
-            'slug' => Str::slug($name) . '-' . Str::random(5),
+            'slug' => Str::slug($name).'-'.Str::random(5),
             'ruc' => fake()->unique()->numerify('###########'),
             'type' => fake()->randomElement($types),
             'especialidad' => fake()->jobTitle(),

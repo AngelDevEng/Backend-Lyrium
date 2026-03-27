@@ -64,7 +64,7 @@ final class Ticket extends Model
     public static function generateTicketNumber(): string
     {
         $year = now()->format('Y');
-        $last = static::withTrashed()
+        $last = self::withTrashed()
             ->where('ticket_number', 'like', "TKT-{$year}-%")
             ->count();
 

@@ -14,13 +14,13 @@ final class EnsureRole
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'No autenticado.'], 401);
         }
 
         $userRole = $user->frontend_role;
 
-        if (!in_array($userRole, $roles)) {
+        if (! in_array($userRole, $roles)) {
             return response()->json(['message' => 'No autorizado.'], 403);
         }
 

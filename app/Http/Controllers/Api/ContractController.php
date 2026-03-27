@@ -25,9 +25,9 @@ final class ContractController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('company', 'like', "%{$search}%")
-                  ->orWhere('ruc', 'like', "%{$search}%")
-                  ->orWhere('contract_number', 'like', "%{$search}%")
-                  ->orWhere('representative', 'like', "%{$search}%");
+                    ->orWhere('ruc', 'like', "%{$search}%")
+                    ->orWhere('contract_number', 'like', "%{$search}%")
+                    ->orWhere('representative', 'like', "%{$search}%");
             });
         }
 
@@ -130,15 +130,33 @@ final class ContractController extends Controller
         $user = $request->user();
 
         $updateData = [];
-        if (isset($data['storeId'])) $updateData['store_id'] = $data['storeId'];
-        if (isset($data['company'])) $updateData['company'] = $data['company'];
-        if (array_key_exists('ruc', $data)) $updateData['ruc'] = $data['ruc'];
-        if (array_key_exists('rep', $data)) $updateData['representative'] = $data['rep'];
-        if (isset($data['type'])) $updateData['type'] = $data['type'];
-        if (isset($data['modality'])) $updateData['modality'] = $data['modality'];
-        if (isset($data['start'])) $updateData['start_date'] = $data['start'];
-        if (array_key_exists('end', $data)) $updateData['end_date'] = $data['end'];
-        if (array_key_exists('notes', $data)) $updateData['notes'] = $data['notes'];
+        if (isset($data['storeId'])) {
+            $updateData['store_id'] = $data['storeId'];
+        }
+        if (isset($data['company'])) {
+            $updateData['company'] = $data['company'];
+        }
+        if (array_key_exists('ruc', $data)) {
+            $updateData['ruc'] = $data['ruc'];
+        }
+        if (array_key_exists('rep', $data)) {
+            $updateData['representative'] = $data['rep'];
+        }
+        if (isset($data['type'])) {
+            $updateData['type'] = $data['type'];
+        }
+        if (isset($data['modality'])) {
+            $updateData['modality'] = $data['modality'];
+        }
+        if (isset($data['start'])) {
+            $updateData['start_date'] = $data['start'];
+        }
+        if (array_key_exists('end', $data)) {
+            $updateData['end_date'] = $data['end'];
+        }
+        if (array_key_exists('notes', $data)) {
+            $updateData['notes'] = $data['notes'];
+        }
 
         $contract->update($updateData);
 
@@ -223,7 +241,7 @@ final class ContractController extends Controller
     {
         $contract = Contract::findOrFail($id);
 
-        if (!$contract->file_path || !Storage::disk('private')->exists($contract->file_path)) {
+        if (! $contract->file_path || ! Storage::disk('private')->exists($contract->file_path)) {
             return response()->json(['error' => 'No hay documento cargado.'], 404);
         }
 

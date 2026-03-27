@@ -37,7 +37,7 @@ final class CategoryController extends Controller
             $query->where('type', $type);
         }
 
-        if (!$request->query('type') && !$request->query('tree') && !$request->query('search')) {
+        if (! $request->query('type') && ! $request->query('tree') && ! $request->query('search')) {
             $query->where(function ($q) {
                 $q->where('type', 'product')->orWhereNull('type');
             });

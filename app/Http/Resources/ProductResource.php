@@ -12,23 +12,39 @@ final class ProductResource extends JsonResource
     public function toArray(Request $request): array
     {
         $data = [
-            'id' => $this->id,
+            'id' => (string) $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
+            'type' => $this->type,
+            'description' => $this->description,
+            'status' => $this->status,
             'sticker' => $this->sticker,
-            'price' => number_format((float) ($this->sale_price ?? $this->price), 2, '.', ''),
-            'regular_price' => $this->regular_price
-                ? number_format((float) $this->regular_price, 2, '.', '')
-                : number_format((float) $this->price, 2, '.', ''),
-            'images' => $this->image ? [
-                [
-                    'src' => $this->image,
-                    'alt' => $this->name,
-                ],
-            ] : [],
+            'price' => (float) ($this->sale_price ?? $this->price),
+            'regular_price' => (float) ($this->regular_price ?? $this->price),
+            'stock' => (int) $this->stock,
+            'images' => $this->resource->getMedia('images')->map(fn ($media) => [
+                'src' => $media->getUrl(),
+                'thumb' => $media->getUrl('thumb'),
+                'medium' => $media->getUrl('medium'),
+                'large' => $media->getUrl('large'),
+                'alt' => $this->name,
+            ])->values()->all(),
             'categories' => $this->whenLoaded('categories', fn () => $this->categories->map(fn ($cat) => [
                 'name' => $cat->name,
+                'slug' => $cat->slug,
             ])->values()->all()),
+            'store' => $this->whenLoaded('store', fn () => [
+                'id' => $this->store->id,
+                'name' => $this->store->store_name,
+                'slug' => $this->store->slug,
+                'logo' => $this->store->logo,
+                'email' => $this->store->corporate_email,
+                'phone' => $this->store->phone,
+            ]),
+            'rating' => [
+                'average' => $this->average_rating,
+                'count' => $this->review_count,
+            ],
         ];
 
         if ($this->type === 'physical') {
@@ -49,6 +65,16 @@ final class ProductResource extends JsonResource
             $data['serviceModality'] = $this->service_modality;
             $data['serviceLocation'] = $this->service_location;
         }
+
+        // Include attributes
+        $data['mainAttributes'] = $this->whenLoaded('mainAttributes', fn () => $this->mainAttributes->map(fn ($attr) => [
+            'values' => $attr->values,
+        ])->values()->all()
+        );
+        $data['additionalAttributes'] = $this->whenLoaded('additionalAttributes', fn () => $this->additionalAttributes->map(fn ($attr) => [
+            'values' => $attr->values,
+        ])->values()->all()
+        );
 
         return $data;
     }

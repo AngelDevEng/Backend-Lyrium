@@ -25,25 +25,22 @@ final class ProductController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Product::with(['categories', 'store', 'mainAttributes', 'additionalAttributes']);
+        $query = Product::with(['categories', 'store', 'mainAttributes', 'additionalAttributes', 'media']);
 
         $user = $request->user();
 
-        if ($user && $user->is_seller && !$user->is_admin) {
-            $store = $user->store;
-            if ($store) {
-                $query->where('store_id', $store->id);
-            }
-        } else {
-            if (!$user || !$user->is_admin) {
-                $query->where('status', 'approved');
-            }
+        // If user has a store, show all products from that store (including pending)
+        if ($user && $user->store) {
+            $query->where('store_id', $user->store->id);
+        } elseif (! $user || ! $user->is_admin) {
+            // Public access - only approved products
+            $query->where('status', 'approved');
         }
 
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -101,11 +98,47 @@ final class ProductController extends Controller
     }
 
     /**
+     * GET /api/admin/products
+     * Admin: listar todos los productos incluyendo pendientes
+     */
+    public function adminIndex(Request $request): JsonResponse
+    {
+        $query = Product::with(['categories', 'store', 'mainAttributes', 'additionalAttributes', 'media']);
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($search = $request->query('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $perPage = min((int) $request->query('per_page', 15), 100);
+        $products = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        $data = ProductResource::collection($products);
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+                'total_pages' => $products->lastPage(),
+            ],
+        ]);
+    }
+
+    /**
      * GET /api/products/{id}
      */
     public function show(string $id): JsonResponse
     {
-        $product = Product::with(['categories', 'mainAttributes', 'additionalAttributes'])
+        $product = Product::with(['categories', 'store', 'mainAttributes', 'additionalAttributes'])
             ->findOrFail($id);
 
         return response()->json(new ProductResource($product));
@@ -120,7 +153,7 @@ final class ProductController extends Controller
         $user = $request->user();
         $store = $user->store;
 
-        if (!$store) {
+        if (! $store) {
             return response()->json(['message' => 'No tienes una tienda registrada.'], 403);
         }
 
@@ -130,7 +163,7 @@ final class ProductController extends Controller
             'store_id' => $store->id,
             'type' => $type,
             'name' => $data['name'],
-            'slug' => Str::slug($data['name']) . '-' . Str::random(5),
+            'slug' => Str::slug($data['name']).'-'.Str::random(5),
             'description' => $data['description'] ?? '',
             'price' => $data['price'],
             'stock' => $data['stock'] ?? 0,
@@ -164,7 +197,7 @@ final class ProductController extends Controller
         $product = Product::create($productData);
 
         // Asociar categoría
-        if (!empty($data['category'])) {
+        if (! empty($data['category'])) {
             $category = Category::where('slug', $data['category'])->first();
             if ($category) {
                 $product->categories()->attach($category->id);
@@ -172,7 +205,7 @@ final class ProductController extends Controller
         }
 
         // Crear atributos
-        if (!empty($data['mainAttributes'])) {
+        if (! empty($data['mainAttributes'])) {
             foreach ($data['mainAttributes'] as $attr) {
                 $product->attributes()->create([
                     'type' => 'main',
@@ -181,7 +214,7 @@ final class ProductController extends Controller
             }
         }
 
-        if (!empty($data['additionalAttributes'])) {
+        if (! empty($data['additionalAttributes'])) {
             foreach ($data['additionalAttributes'] as $attr) {
                 $product->attributes()->create([
                     'type' => 'additional',
@@ -203,13 +236,27 @@ final class ProductController extends Controller
         $product = Product::findOrFail($id);
         $data = $request->validated();
 
+        \Log::info('Update product data:', $data);
+
         $updateData = [];
-        if (isset($data['name'])) $updateData['name'] = $data['name'];
-        if (isset($data['description'])) $updateData['description'] = $data['description'];
-        if (isset($data['price'])) $updateData['price'] = $data['price'];
-        if (isset($data['stock'])) $updateData['stock'] = $data['stock'];
-        if (isset($data['image'])) $updateData['image'] = $data['image'];
-        if (array_key_exists('sticker', $data)) $updateData['sticker'] = $data['sticker'];
+        if (array_key_exists('name', $data)) {
+            $updateData['name'] = $data['name'];
+        }
+        if (array_key_exists('description', $data)) {
+            $updateData['description'] = $data['description'];
+        }
+        if (array_key_exists('price', $data)) {
+            $updateData['price'] = $data['price'];
+        }
+        if (array_key_exists('stock', $data)) {
+            $updateData['stock'] = $data['stock'];
+        }
+        if (array_key_exists('image', $data)) {
+            $updateData['image'] = $data['image'];
+        }
+        if (array_key_exists('sticker', $data)) {
+            $updateData['sticker'] = $data['sticker'];
+        }
         if (array_key_exists('discountPercentage', $data)) {
             $updateData['discount_percentage'] = $data['discountPercentage'];
         }
@@ -218,54 +265,78 @@ final class ProductController extends Controller
 
         // Physical fields
         if ($type === 'physical') {
-            if (array_key_exists('weight', $data)) $updateData['weight'] = $data['weight'];
-            if (array_key_exists('dimensions', $data)) $updateData['dimensions'] = $data['dimensions'];
-            if (array_key_exists('expirationDate', $data)) $updateData['expiration_date'] = $data['expirationDate'];
+            if (array_key_exists('weight', $data)) {
+                $updateData['weight'] = $data['weight'];
+            }
+            if (array_key_exists('dimensions', $data)) {
+                $updateData['dimensions'] = $data['dimensions'];
+            }
+            if (array_key_exists('expirationDate', $data)) {
+                $updateData['expiration_date'] = $data['expirationDate'];
+            }
         }
 
         // Digital fields
         if ($type === 'digital') {
-            if (isset($data['downloadUrl'])) $updateData['download_url'] = $data['downloadUrl'];
-            if (array_key_exists('downloadLimit', $data)) $updateData['download_limit'] = $data['downloadLimit'];
-            if (array_key_exists('fileType', $data)) $updateData['file_type'] = $data['fileType'];
-            if (array_key_exists('fileSize', $data)) $updateData['file_size'] = $data['fileSize'];
+            if (isset($data['downloadUrl'])) {
+                $updateData['download_url'] = $data['downloadUrl'];
+            }
+            if (array_key_exists('downloadLimit', $data)) {
+                $updateData['download_limit'] = $data['downloadLimit'];
+            }
+            if (array_key_exists('fileType', $data)) {
+                $updateData['file_type'] = $data['fileType'];
+            }
+            if (array_key_exists('fileSize', $data)) {
+                $updateData['file_size'] = $data['fileSize'];
+            }
         }
 
         // Service fields
         if ($type === 'service') {
-            if (isset($data['serviceDuration'])) $updateData['service_duration'] = $data['serviceDuration'];
-            if (isset($data['serviceModality'])) $updateData['service_modality'] = $data['serviceModality'];
-            if (array_key_exists('serviceLocation', $data)) $updateData['service_location'] = $data['serviceLocation'];
+            if (isset($data['serviceDuration'])) {
+                $updateData['service_duration'] = $data['serviceDuration'];
+            }
+            if (isset($data['serviceModality'])) {
+                $updateData['service_modality'] = $data['serviceModality'];
+            }
+            if (array_key_exists('serviceLocation', $data)) {
+                $updateData['service_location'] = $data['serviceLocation'];
+            }
         }
 
         $product->update($updateData);
 
         // Actualizar categoría
-        if (isset($data['category'])) {
+        if (array_key_exists('category', $data)) {
             $category = Category::where('slug', $data['category'])->first();
             if ($category) {
                 $product->categories()->sync([$category->id]);
             }
         }
 
-        // Actualizar atributos
-        if (isset($data['mainAttributes'])) {
+        // Actualizar atributos (solo si se envía explícitamente)
+        if (array_key_exists('mainAttributes', $data)) {
             $product->mainAttributes()->delete();
-            foreach ($data['mainAttributes'] as $attr) {
-                $product->attributes()->create([
-                    'type' => 'main',
-                    'values' => $attr['values'] ?? [],
-                ]);
+            if (! empty($data['mainAttributes'])) {
+                foreach ($data['mainAttributes'] as $attr) {
+                    $product->attributes()->create([
+                        'type' => 'main',
+                        'values' => $attr['values'] ?? [],
+                    ]);
+                }
             }
         }
 
-        if (isset($data['additionalAttributes'])) {
+        if (array_key_exists('additionalAttributes', $data)) {
             $product->additionalAttributes()->delete();
-            foreach ($data['additionalAttributes'] as $attr) {
-                $product->attributes()->create([
-                    'type' => 'additional',
-                    'values' => $attr['values'] ?? [],
-                ]);
+            if (! empty($data['additionalAttributes'])) {
+                foreach ($data['additionalAttributes'] as $attr) {
+                    $product->attributes()->create([
+                        'type' => 'additional',
+                        'values' => $attr['values'] ?? [],
+                    ]);
+                }
             }
         }
 
@@ -279,7 +350,12 @@ final class ProductController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $product = Product::findOrFail($id);
+        $product = Product::withTrashed()->findOrFail($id);
+
+        if ($product->trashed()) {
+            return response()->json(['success' => true, 'message' => 'Producto ya eliminado']);
+        }
+
         $product->delete();
 
         return response()->json(['success' => true]);

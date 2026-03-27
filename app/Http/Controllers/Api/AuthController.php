@@ -40,7 +40,7 @@ final class AuthController extends Controller
             ->orWhere('username', $credentials['email'])
             ->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'success' => false,
                 'error' => 'Credenciales inválidas.',
@@ -48,7 +48,7 @@ final class AuthController extends Controller
         }
 
         // Verificar email
-        if (!$user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             $this->otpService->generate($user);
 
             return response()->json([
@@ -81,7 +81,7 @@ final class AuthController extends Controller
             $baseUsername = $username;
             $counter = 1;
             while (User::where('username', $username)->exists()) {
-                $username = $baseUsername . '_' . $counter++;
+                $username = $baseUsername.'_'.$counter++;
             }
 
             $user = User::create([
@@ -129,7 +129,7 @@ final class AuthController extends Controller
         $baseUsername = $username;
         $counter = 1;
         while (User::where('username', $username)->exists()) {
-            $username = $baseUsername . '_' . $counter++;
+            $username = $baseUsername.'_'.$counter++;
         }
 
         $user = User::create([
@@ -159,7 +159,7 @@ final class AuthController extends Controller
     {
         $user = User::where('email', $request->validated('email'))->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'error' => 'Usuario no encontrado.',
@@ -185,7 +185,7 @@ final class AuthController extends Controller
     {
         $user = User::where('email', $request->validated('email'))->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'error' => 'Usuario no encontrado.',
@@ -199,7 +199,7 @@ final class AuthController extends Controller
             ]);
         }
 
-        if (!$this->otpService->canResend($user)) {
+        if (! $this->otpService->canResend($user)) {
             return response()->json([
                 'success' => false,
                 'error' => 'Espera 60 segundos antes de solicitar otro código.',
@@ -221,7 +221,7 @@ final class AuthController extends Controller
     {
         $googleData = $this->googleAuthService->verifyToken($request->validated('credential'));
 
-        if (!$googleData) {
+        if (! $googleData) {
             return response()->json([
                 'success' => false,
                 'error' => 'Token de Google inválido.',

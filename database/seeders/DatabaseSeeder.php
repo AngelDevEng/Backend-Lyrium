@@ -12,8 +12,11 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             PlanSeeder::class,
             AdminUserSeeder::class,
+            PlanRequestSeeder::class,
             CategorySeeder::class,
             HomeSeeder::class,
+            LoyaltyAndPaymentSeeder::class,
+            ShippingSeeder::class,
         ]);
     }
 }

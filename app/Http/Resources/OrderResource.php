@@ -11,10 +11,16 @@ final class OrderResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $canCancel = $this->resource->isPendingSeller();
+        $canConfirm = $this->resource->canBeConfirmedBySeller();
+        $canUpdate = $this->resource->canBeUpdatedBySeller();
+
         return [
             'id' => (string) $this->id,
             'orderNumber' => $this->order_number,
             'status' => $this->status,
+            'globalStatus' => $this->computeGlobalStatus(),
+            'statusLabel' => $this->getStatusLabel(),
             'paymentMethod' => $this->payment_method,
             'paymentStatus' => $this->payment_status,
             'shipping' => [
@@ -29,8 +35,15 @@ final class OrderResource extends JsonResource
             'subtotal' => (float) $this->subtotal,
             'shippingCost' => (float) $this->shipping_cost,
             'taxAmount' => (float) $this->tax_amount,
+            'discountAmount' => (float) $this->discount_amount,
             'total' => (float) $this->total,
+            'couponCode' => $this->coupon_code,
             'notes' => $this->notes,
+            'actions' => [
+                'canCancel' => $canCancel,
+                'canConfirm' => $canConfirm,
+                'canUpdate' => $canUpdate,
+            ],
             'items' => $this->whenLoaded('items', fn () => OrderItemResource::collection($this->items)->resolve($request)),
             'user' => $this->whenLoaded('user', fn () => [
                 'id' => (string) $this->user->id,

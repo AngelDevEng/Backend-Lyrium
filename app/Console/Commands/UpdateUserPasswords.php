@@ -29,8 +29,9 @@ class UpdateUserPasswords extends Command
 
             $user = User::where('email', $email)->first();
 
-            if (!$user) {
+            if (! $user) {
                 $this->warn("Usuario no encontrado: {$email}");
+
                 continue;
             }
 

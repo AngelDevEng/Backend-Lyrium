@@ -25,8 +25,8 @@ final class SupplierController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('ruc', 'like', "%{$search}%")
-                  ->orWhere('especialidad', 'like', "%{$search}%");
+                    ->orWhere('ruc', 'like', "%{$search}%")
+                    ->orWhere('especialidad', 'like', "%{$search}%");
             });
         }
 
@@ -63,7 +63,7 @@ final class SupplierController extends Controller
 
         $supplier = Supplier::create([
             'name' => $data['name'],
-            'slug' => Str::slug($data['name']) . '-' . Str::random(5),
+            'slug' => Str::slug($data['name']).'-'.Str::random(5),
             'ruc' => $data['ruc'] ?? null,
             'type' => $data['tipo'] ?? 'Economista',
             'especialidad' => $data['especialidad'] ?? null,
@@ -85,14 +85,30 @@ final class SupplierController extends Controller
         $data = $request->validated();
 
         $updateData = [];
-        if (isset($data['name'])) $updateData['name'] = $data['name'];
-        if (array_key_exists('ruc', $data)) $updateData['ruc'] = $data['ruc'];
-        if (isset($data['tipo'])) $updateData['type'] = $data['tipo'];
-        if (array_key_exists('especialidad', $data)) $updateData['especialidad'] = $data['especialidad'];
-        if (isset($data['estado'])) $updateData['status'] = $data['estado'];
-        if (array_key_exists('fechaRenovacion', $data)) $updateData['fecha_renovacion'] = $data['fechaRenovacion'];
-        if (array_key_exists('proyectos', $data)) $updateData['proyectos'] = $data['proyectos'];
-        if (array_key_exists('certificaciones', $data)) $updateData['certificaciones'] = $data['certificaciones'];
+        if (isset($data['name'])) {
+            $updateData['name'] = $data['name'];
+        }
+        if (array_key_exists('ruc', $data)) {
+            $updateData['ruc'] = $data['ruc'];
+        }
+        if (isset($data['tipo'])) {
+            $updateData['type'] = $data['tipo'];
+        }
+        if (array_key_exists('especialidad', $data)) {
+            $updateData['especialidad'] = $data['especialidad'];
+        }
+        if (isset($data['estado'])) {
+            $updateData['status'] = $data['estado'];
+        }
+        if (array_key_exists('fechaRenovacion', $data)) {
+            $updateData['fecha_renovacion'] = $data['fechaRenovacion'];
+        }
+        if (array_key_exists('proyectos', $data)) {
+            $updateData['proyectos'] = $data['proyectos'];
+        }
+        if (array_key_exists('certificaciones', $data)) {
+            $updateData['certificaciones'] = $data['certificaciones'];
+        }
 
         $supplier->update($updateData);
 

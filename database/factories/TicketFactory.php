@@ -16,7 +16,7 @@ final class TicketFactory extends Factory
     public function definition(): array
     {
         return [
-            'ticket_number' => 'TKT-' . now()->format('Y') . '-' . fake()->unique()->numerify('###'),
+            'ticket_number' => 'TKT-'.now()->format('Y').'-'.fake()->unique()->numerify('###'),
             'user_id' => User::factory(),
             'store_id' => Store::factory(),
             'assigned_admin_id' => null,

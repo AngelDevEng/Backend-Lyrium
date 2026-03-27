@@ -36,12 +36,12 @@ final class TicketStatusChangedNotification extends Notification
 
         return (new MailMessage)
             ->subject("Ticket {$this->ticket->ticket_number} — Estado actualizado")
-            ->greeting("Actualización de tu ticket")
+            ->greeting('Actualización de tu ticket')
             ->line("**Ticket:** {$this->ticket->ticket_number}")
             ->line("**Asunto:** {$this->ticket->subject}")
-            ->line("**Estado anterior:** " . ($statusLabels[$this->oldStatus] ?? $this->oldStatus))
-            ->line("**Nuevo estado:** " . ($statusLabels[$this->newStatus] ?? $this->newStatus))
-            ->action('Ver ticket', config('app.frontend_url', 'http://localhost:3000') . '/seller/help');
+            ->line('**Estado anterior:** '.($statusLabels[$this->oldStatus] ?? $this->oldStatus))
+            ->line('**Nuevo estado:** '.($statusLabels[$this->newStatus] ?? $this->newStatus))
+            ->action('Ver ticket', config('app.frontend_url', 'http://localhost:3000').'/seller/help');
     }
 
     public function toArray(object $notifiable): array

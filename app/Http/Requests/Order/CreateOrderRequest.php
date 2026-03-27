@@ -26,6 +26,19 @@ final class CreateOrderRequest extends FormRequest
             'shipping_notes' => ['nullable', 'string', 'max:500'],
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'coupon_code' => ['nullable', 'string', 'max:50'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($this->has('subtotal')) {
+                $subtotal = (float) $this->input('subtotal');
+                if ($subtotal < 20) {
+                    $validator->errors()->add('subtotal', 'El monto mínimo de la orden es S/ 20.00.');
+                }
+            }
+        });
     }
 }

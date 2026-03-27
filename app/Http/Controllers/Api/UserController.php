@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Seller\UpdateSellerProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,7 @@ final class UserController extends Controller
     public function show(int $id): JsonResponse
     {
         $user = User::findOrFail($id);
+
         return response()->json(new UserResource($user));
     }
 
@@ -39,8 +41,8 @@ final class UserController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%");
             });
         }
 
@@ -98,6 +100,20 @@ final class UserController extends Controller
     }
 
     /**
+     * PUT /api/users/profile
+     * Seller profile update with new fields
+     */
+    public function updateProfile(UpdateSellerProfileRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validated();
+
+        $user->update($data);
+
+        return response()->json(new UserResource($user->fresh()));
+    }
+
+    /**
      * PUT /api/users/{id}
      */
     public function update(Request $request, int $id): JsonResponse
@@ -106,7 +122,7 @@ final class UserController extends Controller
 
         $data = $request->validate([
             'display_name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $id,
+            'email' => 'sometimes|email|unique:users,email,'.$id,
             'avatar' => 'sometimes|nullable|string',
         ]);
 

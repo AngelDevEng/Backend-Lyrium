@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\BannerResource;
 use App\Http\Resources\HeroResource;
 use App\Http\Resources\ProductResource;
 use App\Models\Banner;
@@ -56,12 +55,12 @@ final class HomeController extends Controller
     {
         $category = Category::where('slug', $slug)->first();
 
-        if (!$category) {
+        if (! $category) {
             return $this->error('Categoría no encontrada', 404);
         }
 
         $banner = Banner::active()
-            ->bySection('categoria_' . $slug)
+            ->bySection('categoria_'.$slug)
             ->orderBy('position')
             ->first();
 

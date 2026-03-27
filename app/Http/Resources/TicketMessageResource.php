@@ -25,7 +25,7 @@ final class TicketMessageResource extends JsonResource
                 return $this->attachments->map(fn ($a) => [
                     'name' => $a->name,
                     'type' => $a->file_type,
-                    'url' => asset('storage/' . $a->path),
+                    'url' => asset('storage/'.$a->path),
                 ]);
             }),
         ];

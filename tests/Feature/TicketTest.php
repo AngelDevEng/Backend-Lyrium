@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\Store;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
@@ -401,6 +400,6 @@ final class TicketTest extends TestCase
         $number2 = Ticket::generateTicketNumber();
 
         $this->assertNotEquals($number1, $number2);
-        $this->assertStringStartsWith('TKT-' . now()->format('Y'), $number1);
+        $this->assertStringStartsWith('TKT-'.now()->format('Y'), $number1);
     }
 }

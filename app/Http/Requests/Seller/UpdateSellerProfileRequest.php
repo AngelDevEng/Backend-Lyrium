@@ -19,7 +19,15 @@ final class UpdateSellerProfileRequest extends FormRequest
             'name' => ['sometimes', 'string', 'min:2', 'max:100'],
             'username' => ['sometimes', 'string', 'min:3', 'max:30', 'unique:users,username,'.auth()->id()],
             'phone' => ['nullable', 'string', 'max:20'],
-            'avatar' => ['nullable', 'string', 'url'],
+            'phone_2' => ['nullable', 'string', 'max:20'],
+            'avatar' => ['nullable', 'string', 'max:500'],
+            'document_type' => ['nullable', 'string', 'max:10'],
+            'document_number' => ['nullable', 'string', 'max:20'],
+            'departamento' => ['nullable', 'string', 'max:50'],
+            'provincia' => ['nullable', 'string', 'max:50'],
+            'distrito' => ['nullable', 'string', 'max:50'],
+            'admin_nombre' => ['nullable', 'string', 'max:255'],
+            'admin_dni' => ['nullable', 'string', 'max:20'],
         ];
     }
 

@@ -19,7 +19,7 @@ final class UpdateSupplierRequest extends FormRequest
 
         return [
             'name' => 'sometimes|string|min:2|max:255',
-            'ruc' => 'nullable|string|size:11|unique:suppliers,ruc,' . $supplierId,
+            'ruc' => 'nullable|string|size:11|unique:suppliers,ruc,'.$supplierId,
             'tipo' => 'nullable|string|in:Economista,Contador,Ingeniero',
             'especialidad' => 'nullable|string|max:255',
             'estado' => 'nullable|string|in:Activo,Suspendido,Finalizado',

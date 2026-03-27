@@ -13,8 +13,11 @@ use Illuminate\Support\Facades\Mail;
 final class OtpService
 {
     private const CODE_LENGTH = 6;
+
     private const EXPIRY_MINUTES = 10;
+
     private const MAX_ATTEMPTS = 5;
+
     private const RESEND_COOLDOWN_SECONDS = 60;
 
     public function generate(User $user): void
@@ -42,23 +45,26 @@ final class OtpService
             ->latest()
             ->first();
 
-        if (!$record) {
+        if (! $record) {
             return ['success' => false, 'error' => 'No hay código de verificación pendiente.'];
         }
 
         if ($record->isExpired()) {
             $record->delete();
+
             return ['success' => false, 'error' => 'El código ha expirado. Solicita uno nuevo.'];
         }
 
         if ($record->hasExceededAttempts(self::MAX_ATTEMPTS)) {
             $record->delete();
+
             return ['success' => false, 'error' => 'Demasiados intentos. Solicita un nuevo código.'];
         }
 
-        if (!Hash::check($code, $record->code)) {
+        if (! Hash::check($code, $record->code)) {
             $record->increment('attempts');
             $remaining = self::MAX_ATTEMPTS - $record->fresh()->attempts;
+
             return ['success' => false, 'error' => "Código incorrecto. Te quedan {$remaining} intentos."];
         }
 
@@ -75,7 +81,7 @@ final class OtpService
             ->latest()
             ->first();
 
-        if (!$lastCode) {
+        if (! $lastCode) {
             return true;
         }
 
