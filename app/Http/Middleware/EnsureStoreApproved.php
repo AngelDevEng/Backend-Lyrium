@@ -14,7 +14,7 @@ final class EnsureStoreApproved
     {
         $user = $request->user();
 
-        if (! $user || ! $user->is_seller) {
+        if (! $user || ! $user->hasRole('seller')) {
             return response()->json(['message' => 'Se requiere cuenta de vendedor.'], 403);
         }
 

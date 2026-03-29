@@ -19,6 +19,9 @@ final class RegisterCustomerRequest extends FormRequest
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
+            'phone' => 'nullable|string|max:20',
+            'document_type' => 'nullable|string|in:DNI,CE,PASAPORTE,PAS',
+            'document_number' => 'nullable|string|max:20',
         ];
     }
 

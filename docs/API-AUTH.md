@@ -170,7 +170,7 @@ POST /api/auth/register
 ```
 
 **Que se crea en el backend:**
-- Usuario con rol `seller`, `is_seller: true`, `document_type: RUC`
+- Usuario con rol `seller` (asignado via Spatie), `document_type: RUC`
 - Tienda con `status: pending` (requiere aprobacion del admin)
 - Se envia codigo OTP de 6 digitos al email
 

@@ -109,7 +109,9 @@ final class AuthTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('requires_verification', true);
 
-        $this->assertDatabaseHas('users', ['email' => 'seller@test.com', 'is_seller' => true]);
+        $user = User::where('email', 'seller@test.com')->first();
+        $this->assertNotNull($user);
+        $this->assertTrue($user->hasRole('seller'));
         $this->assertDatabaseHas('stores', ['ruc' => '20123456789', 'status' => 'pending']);
     }
 

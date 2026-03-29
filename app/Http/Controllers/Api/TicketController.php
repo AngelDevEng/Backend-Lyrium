@@ -93,7 +93,7 @@ final class TicketController extends Controller
             'type' => 'normal',
         ]);
 
-        $admins = User::where('is_admin', true)->get();
+        $admins = User::role('administrator')->get();
         foreach ($admins as $admin) {
             $admin->notify(new TicketCreatedNotification($ticket->load('user', 'store')));
         }

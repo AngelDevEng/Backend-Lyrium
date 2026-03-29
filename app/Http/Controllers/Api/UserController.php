@@ -48,9 +48,10 @@ final class UserController extends Controller
 
         if ($role = $request->query('role')) {
             match ($role) {
-                'administrator' => $query->where('is_admin', true),
-                'seller' => $query->where('is_seller', true),
-                'customer' => $query->where('is_admin', false)->where('is_seller', false),
+                'administrator' => $query->role('administrator'),
+                'seller' => $query->role('seller'),
+                'customer' => $query->role('customer'),
+                'logistics_operator' => $query->role('logistics_operator'),
                 default => null,
             };
         }
@@ -77,9 +78,9 @@ final class UserController extends Controller
         $query = User::query();
 
         match ($role) {
-            'administrator' => $query->where('is_admin', true),
-            'seller' => $query->where('is_seller', true),
-            'customer' => $query->where('is_admin', false)->where('is_seller', false),
+            'administrator' => $query->role('administrator'),
+            'seller' => $query->role('seller'),
+            'customer' => $query->role('customer'),
             'logistics_operator' => $query->role('logistics_operator'),
             default => null,
         };

@@ -257,7 +257,7 @@ final class MediaController extends Controller
         try {
             $store = Store::findOrFail($storeId);
 
-            if (! $request->user()->is_admin && $store->owner_id !== $request->user()->id) {
+            if (! $request->user()->hasRole('administrator') && $store->owner_id !== $request->user()->id) {
                 return response()->json(['message' => 'No tienes permiso para actualizar esta tienda.'], 403);
             }
 
@@ -304,7 +304,7 @@ final class MediaController extends Controller
         try {
             $store = Store::findOrFail($storeId);
 
-            if (! $request->user()->is_admin && $store->owner_id !== $request->user()->id) {
+            if (! $request->user()->hasRole('administrator') && $store->owner_id !== $request->user()->id) {
                 return response()->json(['message' => 'No tienes permiso para actualizar esta tienda.'], 403);
             }
 

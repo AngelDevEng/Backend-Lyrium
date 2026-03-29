@@ -20,7 +20,6 @@ trait WithRoles
     protected function createAdmin(): User
     {
         $user = User::factory()->create([
-            'is_admin' => true,
             'email_verified_at' => now(),
         ]);
         $user->assignRole('administrator');
@@ -31,7 +30,6 @@ trait WithRoles
     protected function createSeller(?Store $store = null): User
     {
         $user = User::factory()->create([
-            'is_seller' => true,
             'email_verified_at' => now(),
         ]);
         $user->assignRole('seller');

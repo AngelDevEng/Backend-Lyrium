@@ -21,12 +21,12 @@ final class StorePolicy
 
     public function create(User $user): bool
     {
-        return $user->is_seller || $user->is_admin;
+        return $user->hasAnyRole(['seller', 'administrator']);
     }
 
     public function update(User $user, Store $store): bool
     {
-        if ($user->is_admin) {
+        if ($user->hasRole('administrator')) {
             return true;
         }
 
@@ -39,16 +39,16 @@ final class StorePolicy
 
     public function delete(User $user, Store $store): bool
     {
-        return $user->is_admin;
+        return $user->hasRole('administrator');
     }
 
     public function restore(User $user, Store $store): bool
     {
-        return $user->is_admin;
+        return $user->hasRole('administrator');
     }
 
     public function forceDelete(User $user, Store $store): bool
     {
-        return $user->is_admin;
+        return $user->hasRole('administrator');
     }
 }

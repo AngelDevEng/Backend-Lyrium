@@ -32,7 +32,7 @@ final class ProductController extends Controller
         // If user has a store, show all products from that store (including pending)
         if ($user && $user->store) {
             $query->where('store_id', $user->store->id);
-        } elseif (! $user || ! $user->is_admin) {
+        } elseif (! $user || ! $user->hasRole('administrator')) {
             // Public access - only approved products
             $query->where('status', 'approved');
         }

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUpdateRequest;
 use App\Http\Resources\StoreResource;
 use App\Models\Store;
+use App\Notifications\StoreStatusNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -143,11 +144,11 @@ final class StoreController extends Controller
      */
     public function updateStatus(Request $request, int $id): JsonResponse
     {
-        $store = Store::findOrFail($id);
+        $store = Store::with('owner')->findOrFail($id);
 
         $data = $request->validate([
             'status' => 'required|string|in:approved,rejected,banned',
-            'reason' => 'nullable|string',
+            'reason' => 'nullable|string|max:500',
         ]);
 
         $updateData = ['status' => $data['status']];
@@ -161,6 +162,13 @@ final class StoreController extends Controller
         }
 
         $store->update($updateData);
+
+        // Enviar notificación al propietario de la tienda
+        $store->owner->notify(new StoreStatusNotification(
+            $store,
+            $data['status'],
+            $data['reason'] ?? null,
+        ));
 
         return response()->json(new StoreResource($store->fresh()->load(['owner', 'category'])));
     }

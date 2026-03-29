@@ -17,11 +17,12 @@ class CreateTestUsers extends Command
         $password = 'password';
 
         $this->info('Buscando usuarios existentes (incluyendo eliminados)...');
-        $allUsers = User::withTrashed()->select('id', 'name', 'email', 'username', 'is_admin', 'is_seller', 'deleted_at')->get();
+        $allUsers = User::withTrashed()->select('id', 'name', 'email', 'username', 'deleted_at')->get();
 
         foreach ($allUsers as $user) {
             $deleted = $user->deleted_at ? ' [ELIMINADO]' : '';
-            $this->line("ID: {$user->id}, Email: {$user->email}, Username: {$user->username}{$deleted}");
+            $role = $user->getRoleNames()->first() ?? 'sin rol';
+            $this->line("ID: {$user->id}, Email: {$user->email}, Username: {$user->username}, Rol: {$role}{$deleted}");
         }
 
         $this->newLine();
@@ -43,8 +44,6 @@ class CreateTestUsers extends Command
                 'username' => $adminUsername,
                 'name' => 'Angel Engineer',
                 'nicename' => 'angel-engineer',
-                'is_admin' => true,
-                'is_seller' => false,
                 'password' => $password,
                 'email_verified_at' => now(),
             ]);
@@ -57,8 +56,6 @@ class CreateTestUsers extends Command
                 'username' => $adminUsername,
                 'name' => 'Angel Engineer',
                 'nicename' => 'angel-engineer',
-                'is_admin' => true,
-                'is_seller' => false,
                 'password' => $password,
                 'email_verified_at' => now(),
             ]);
@@ -80,8 +77,6 @@ class CreateTestUsers extends Command
                 'username' => $sellerUsername,
                 'name' => 'Angel Ipanque',
                 'nicename' => 'angel-ipanaque',
-                'is_seller' => true,
-                'is_admin' => false,
                 'phone' => '999888777',
                 'document_type' => 'RUC',
                 'document_number' => '20123456789',
@@ -97,8 +92,6 @@ class CreateTestUsers extends Command
                 'username' => $sellerUsername,
                 'name' => 'Angel Ipanque',
                 'nicename' => 'angel-ipanaque',
-                'is_seller' => true,
-                'is_admin' => false,
                 'phone' => '999888777',
                 'document_type' => 'RUC',
                 'document_number' => '20123456789',
@@ -141,7 +134,7 @@ class CreateTestUsers extends Command
 
         $this->newLine();
         $this->warn('===========================================');
-        $this->warn('   CREDITENCIALES DE PRUEBA');
+        $this->warn('   CREDENCIALES DE PRUEBA');
         $this->warn('===========================================');
         $this->info('Admin:    '.$adminEmail);
         $this->info('Vendedor: '.$sellerEmail);

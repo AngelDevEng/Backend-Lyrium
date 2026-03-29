@@ -23,11 +23,11 @@ final class OrderController extends Controller
     {
         $user = $request->user();
 
-        if ($user->is_admin) {
+        if ($user->hasRole('administrator')) {
             $orders = Order::with(['items.product.store', 'user'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(15);
-        } elseif ($user->is_seller) {
+        } elseif ($user->hasRole('seller')) {
             $storeIds = $user->stores()->pluck('stores.id');
             $orders = Order::whereHas('items', fn ($q) => $q->whereIn('store_id', $storeIds))
                 ->with(['items.product.store', 'user'])
@@ -57,11 +57,11 @@ final class OrderController extends Controller
         $user = $request->user();
         $order = Order::with(['items.product.store', 'user'])->findOrFail($id);
 
-        if (! $user->is_admin && ! $user->is_seller && $order->user_id !== $user->id) {
+        if (! $user->hasRole('administrator') && ! $user->hasRole('seller') && $order->user_id !== $user->id) {
             return $this->forbidden('No tienes acceso a esta orden.');
         }
 
-        if ($user->is_seller) {
+        if ($user->hasRole('seller')) {
             $storeIds = $user->stores()->pluck('stores.id');
             $hasAccess = $order->items->every(fn ($item) => $storeIds->contains($item->store_id));
             if (! $hasAccess) {
@@ -202,13 +202,13 @@ final class OrderController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->is_seller && ! $user->is_admin) {
+        if (! $user->hasRole('seller') && ! $user->hasRole('administrator')) {
             return $this->forbidden('Solo vendedores o administradores pueden confirmar órdenes.');
         }
 
         $order = Order::with(['items.product.store', 'user'])->findOrFail($id);
 
-        if ($user->is_seller) {
+        if ($user->hasRole('seller')) {
             $storeIds = $user->stores()->pluck('stores.id');
             $hasAccess = $order->items()->whereIn('store_id', $storeIds)->exists();
             if (! $hasAccess) {
@@ -245,7 +245,7 @@ final class OrderController extends Controller
             return $this->error('Estado no válido.', 400);
         }
 
-        if ($user->is_seller) {
+        if ($user->hasRole('seller')) {
             $storeIds = $user->stores()->pluck('stores.id');
             $hasAccess = $order->items()->whereIn('store_id', $storeIds)->exists();
             if (! $hasAccess) {
@@ -301,7 +301,7 @@ final class OrderController extends Controller
             }
 
             $order->refreshGlobalStatus();
-        } elseif ($user->is_admin) {
+        } elseif ($user->hasRole('administrator')) {
             $order->update(['status' => $newStatus]);
             $order->items()->update(['status' => $newStatus]);
         } else {
@@ -347,14 +347,14 @@ final class OrderController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->is_seller && ! $user->is_admin) {
+        if (! $user->hasRole('seller') && ! $user->hasRole('administrator')) {
             return $this->forbidden('Solo vendedores o administradores pueden confirmar items.');
         }
 
         $order = Order::with('items.product')->findOrFail($orderId);
         $item = $order->items()->findOrFail($itemId);
 
-        if ($user->is_seller) {
+        if ($user->hasRole('seller')) {
             $storeIds = $user->stores()->pluck('stores.id')->toArray();
             if (! in_array($item->store_id, $storeIds)) {
                 return $this->forbidden('Este item no pertenece a tu tienda.');
@@ -385,7 +385,7 @@ final class OrderController extends Controller
 
         $newStatus = $data['status'];
 
-        if ($user->is_seller) {
+        if ($user->hasRole('seller')) {
             $storeIds = $user->stores()->pluck('stores.id')->toArray();
             if (! in_array($item->store_id, $storeIds)) {
                 return $this->forbidden('Este item no pertenece a tu tienda.');
@@ -412,7 +412,7 @@ final class OrderController extends Controller
 
                 $item->update(['status' => $newStatus]);
             }
-        } elseif ($user->is_admin) {
+        } elseif ($user->hasRole('administrator')) {
             if ($newStatus === OrderItem::STATUS_CANCELLED) {
                 $item->update(['status' => OrderItem::STATUS_CANCELLED]);
                 $item->product->increment('stock', $item->quantity);

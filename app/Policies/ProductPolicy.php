@@ -21,16 +21,16 @@ final class ProductPolicy
 
     public function create(User $user): bool
     {
-        return $user->is_seller || $user->is_admin;
+        return $user->hasAnyRole(['seller', 'administrator']);
     }
 
     public function update(User $user, Product $product): bool
     {
-        if ($user->is_admin) {
+        if ($user->hasRole('administrator')) {
             return true;
         }
 
-        if ($user->is_seller && $product->store?->owner_id === $user->id) {
+        if ($user->hasRole('seller') && $product->store?->owner_id === $user->id) {
             return true;
         }
 
@@ -39,11 +39,11 @@ final class ProductPolicy
 
     public function delete(User $user, Product $product): bool
     {
-        if ($user->is_admin) {
+        if ($user->hasRole('administrator')) {
             return true;
         }
 
-        if ($user->is_seller && $product->store?->owner_id === $user->id) {
+        if ($user->hasRole('seller') && $product->store?->owner_id === $user->id) {
             return true;
         }
 
@@ -52,11 +52,11 @@ final class ProductPolicy
 
     public function restore(User $user, Product $product): bool
     {
-        return $user->is_admin;
+        return $user->hasRole('administrator');
     }
 
     public function forceDelete(User $user, Product $product): bool
     {
-        return $user->is_admin;
+        return $user->hasRole('administrator');
     }
 }

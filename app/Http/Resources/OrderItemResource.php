@@ -12,7 +12,7 @@ final class OrderItemResource extends JsonResource
     public function toArray(Request $request): array
     {
         $user = $request->user();
-        $isSeller = $user && ($user->is_seller || $user->is_admin);
+        $isSeller = $user && $user->hasAnyRole(['seller', 'administrator']);
 
         $canConfirm = false;
         $canCancel = false;

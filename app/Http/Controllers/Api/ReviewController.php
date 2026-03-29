@@ -96,7 +96,7 @@ final class ReviewController extends Controller
         $review = Review::findOrFail($id);
         $user = $request->user();
 
-        if ($review->user_id !== $user->id && ! $user->is_admin) {
+        if ($review->user_id !== $user->id && ! $user->hasRole('administrator')) {
             return $this->forbidden('No tienes permiso para editar esta reseña.');
         }
 
@@ -114,7 +114,7 @@ final class ReviewController extends Controller
         $review = Review::findOrFail($id);
         $user = $request->user();
 
-        if ($review->user_id !== $user->id && ! $user->is_admin) {
+        if ($review->user_id !== $user->id && ! $user->hasRole('administrator')) {
             return $this->forbidden('No tienes permiso para eliminar esta reseña.');
         }
 

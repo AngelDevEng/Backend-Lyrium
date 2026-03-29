@@ -40,7 +40,7 @@ final class AuthController extends Controller
             ->orWhere('username', $credentials['email'])
             ->first();
 
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'success' => false,
                 'error' => 'Credenciales inválidas.',
@@ -48,7 +48,7 @@ final class AuthController extends Controller
         }
 
         // Verificar email
-        if (! $user->hasVerifiedEmail()) {
+        if (!$user->hasVerifiedEmail()) {
             $this->otpService->generate($user);
 
             return response()->json([
@@ -81,7 +81,7 @@ final class AuthController extends Controller
             $baseUsername = $username;
             $counter = 1;
             while (User::where('username', $username)->exists()) {
-                $username = $baseUsername.'_'.$counter++;
+                $username = $baseUsername . '_' . $counter++;
             }
 
             $user = User::create([
@@ -92,7 +92,6 @@ final class AuthController extends Controller
                 'phone' => $data['phone'],
                 'document_type' => 'RUC',
                 'document_number' => $data['ruc'],
-                'is_seller' => true,
                 'password' => $data['password'],
             ]);
 
@@ -129,7 +128,7 @@ final class AuthController extends Controller
         $baseUsername = $username;
         $counter = 1;
         while (User::where('username', $username)->exists()) {
-            $username = $baseUsername.'_'.$counter++;
+            $username = $baseUsername . '_' . $counter++;
         }
 
         $user = User::create([
@@ -137,6 +136,9 @@ final class AuthController extends Controller
             'username' => $username,
             'email' => $data['email'],
             'nicename' => Str::slug($data['name']),
+            'phone' => $data['phone'] ?? null,
+            'document_type' => $data['document_type'] ?? null,
+            'document_number' => $data['document_number'] ?? null,
             'password' => $data['password'],
         ]);
 
@@ -159,7 +161,7 @@ final class AuthController extends Controller
     {
         $user = User::where('email', $request->validated('email'))->first();
 
-        if (! $user) {
+        if (!$user) {
             return response()->json([
                 'success' => false,
                 'error' => 'Usuario no encontrado.',
@@ -170,10 +172,20 @@ final class AuthController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'El email ya está verificado.',
+                'already_verified' => true,
+                'user_type' => $user->hasRole('seller') ? 'seller' : 'customer',
             ]);
         }
 
         $result = $this->otpService->verify($user, $request->validated('code'));
+
+        if ($result['success']) {
+            $userType = $user->hasRole('seller') ? 'seller' : 'customer';
+            $result['user_type'] = $userType;
+            $result['message'] = $userType === 'seller'
+                ? 'Tu correo fue verificado. Te notificaremos cuando tu tienda sea aprobada.'
+                : 'Tu correo fue verificado. Ya puedes iniciar sesión.';
+        }
 
         return response()->json($result, $result['success'] ? 200 : 422);
     }
@@ -185,7 +197,7 @@ final class AuthController extends Controller
     {
         $user = User::where('email', $request->validated('email'))->first();
 
-        if (! $user) {
+        if (!$user) {
             return response()->json([
                 'success' => false,
                 'error' => 'Usuario no encontrado.',
@@ -199,7 +211,7 @@ final class AuthController extends Controller
             ]);
         }
 
-        if (! $this->otpService->canResend($user)) {
+        if (!$this->otpService->canResend($user)) {
             return response()->json([
                 'success' => false,
                 'error' => 'Espera 60 segundos antes de solicitar otro código.',
@@ -221,7 +233,7 @@ final class AuthController extends Controller
     {
         $googleData = $this->googleAuthService->verifyToken($request->validated('credential'));
 
-        if (! $googleData) {
+        if (!$googleData) {
             return response()->json([
                 'success' => false,
                 'error' => 'Token de Google inválido.',

@@ -19,7 +19,7 @@ final class InvoiceController extends Controller
 
         $query = Invoice::with('order');
 
-        if (! $user->is_admin) {
+        if (! $user->hasRole('administrator')) {
             $query->whereHas('order', fn ($q) => $q->where('user_id', $user->id));
         }
 
@@ -42,7 +42,7 @@ final class InvoiceController extends Controller
         $user = $request->user();
         $invoice = Invoice::with('order')->findOrFail($id);
 
-        if (! $user->is_admin && $invoice->order->user_id !== $user->id) {
+        if (! $user->hasRole('administrator') && $invoice->order->user_id !== $user->id) {
             return $this->forbidden('No tienes acceso a esta factura.');
         }
 
@@ -59,7 +59,7 @@ final class InvoiceController extends Controller
         $user = $request->user();
         $order = Order::with('items.product')->findOrFail($orderId);
 
-        if (! $user->is_admin && $order->user_id !== $user->id) {
+        if (! $user->hasRole('administrator') && $order->user_id !== $user->id) {
             return $this->forbidden('No tienes acceso a esta orden.');
         }
 

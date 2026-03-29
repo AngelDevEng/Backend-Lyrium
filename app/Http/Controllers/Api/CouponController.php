@@ -55,16 +55,16 @@ final class CouponController extends Controller
         $data = $request->validated();
         $user = $request->user();
 
-        if (! $user->is_seller && ! $user->is_admin) {
+        if (! $user->hasRole('seller') && ! $user->hasRole('administrator')) {
             return $this->forbidden('No tienes permiso para crear cupones.');
         }
 
         if (isset($data['store_id'])) {
             $store = $user->stores()->where('stores.id', $data['store_id'])->first();
-            if (! $store && ! $user->is_admin) {
+            if (! $store && ! $user->hasRole('administrator')) {
                 return $this->forbidden('No tienes acceso a esta tienda.');
             }
-        } elseif ($user->is_seller) {
+        } elseif ($user->hasRole('seller')) {
             $store = $user->store;
             $data['store_id'] = $store?->id;
         }
@@ -83,7 +83,7 @@ final class CouponController extends Controller
         $coupon = Coupon::findOrFail($id);
         $user = $request->user();
 
-        if (! $user->is_admin && $coupon->store_id) {
+        if (! $user->hasRole('administrator') && $coupon->store_id) {
             $hasAccess = $user->stores()->where('stores.id', $coupon->store_id)->exists();
             if (! $hasAccess) {
                 return $this->forbidden('No tienes permiso para editar este cupón.');
@@ -107,7 +107,7 @@ final class CouponController extends Controller
         $coupon = Coupon::findOrFail($id);
         $user = $request->user();
 
-        if (! $user->is_admin && $coupon->store_id) {
+        if (! $user->hasRole('administrator') && $coupon->store_id) {
             $hasAccess = $user->stores()->where('stores.id', $coupon->store_id)->exists();
             if (! $hasAccess) {
                 return $this->forbidden('No tienes permiso para eliminar este cupón.');

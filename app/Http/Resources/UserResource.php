@@ -20,16 +20,8 @@ final class UserResource extends JsonResource
             'role' => $this->frontend_role,
             'avatar' => $this->avatar,
             'phone' => $this->phone,
-            'phone_2' => $this->phone_2,
             'document_type' => $this->document_type,
             'document_number' => $this->document_number,
-            'location' => [
-                'departamento' => $this->departamento,
-                'provincia' => $this->provincia,
-                'distrito' => $this->distrito,
-            ],
-            'admin_nombre' => $this->admin_nombre,
-            'admin_dni' => $this->admin_dni,
         ];
     }
 }

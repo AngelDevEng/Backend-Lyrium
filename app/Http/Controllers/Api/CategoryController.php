@@ -30,7 +30,7 @@ final class CategoryController extends Controller
         }
 
         if ($request->boolean('tree')) {
-            $query->whereNull('parent_id')->with('children');
+            $query->whereNull('parent_id')->with('children.children');
         }
 
         if ($type = $request->query('type')) {
@@ -59,12 +59,59 @@ final class CategoryController extends Controller
     }
 
     /**
+     * GET /api/categories/mega-menu
+     * Devuelve categorías en formato árbol con 3 niveles para el mega-menú público.
+     */
+    public function megaMenu(): JsonResponse
+    {
+        $categories = Category::whereNull('parent_id')
+            ->where('type', 'product')
+            ->with(['children' => function ($q) {
+                $q->orderBy('sort_order')
+                  ->with(['children' => function ($q2) {
+                      $q2->orderBy('sort_order');
+                  }]);
+            }])
+            ->orderBy('sort_order')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $categories->map(function ($cat) {
+                return [
+                    'id' => $cat->id,
+                    'name' => $cat->name,
+                    'slug' => $cat->slug,
+                    'image' => $cat->image,
+                    'children' => $cat->children->map(function ($sub) use ($cat) {
+                        return [
+                            'id' => $sub->id,
+                            'name' => $sub->name,
+                            'slug' => $sub->slug,
+                            'image' => $sub->image,
+                            'href' => '/productos/' . $cat->slug . '/' . $sub->slug,
+                            'children' => $sub->children->map(function ($subsub) use ($cat) {
+                                return [
+                                    'id' => $subsub->id,
+                                    'name' => $subsub->name,
+                                    'slug' => $subsub->slug,
+                                    'href' => '/productos/' . $cat->slug . '/' . $subsub->slug,
+                                ];
+                            }),
+                        ];
+                    }),
+                ];
+            }),
+        ]);
+    }
+
+    /**
      * GET /api/categories/{id}
      */
     public function show(int $id): JsonResponse
     {
         $category = Category::withCount('products')
-            ->with('children')
+            ->with('children.children')
             ->findOrFail($id);
 
         return response()->json(new CategoryResource($category));
@@ -80,14 +127,32 @@ final class CategoryController extends Controller
             'description' => 'nullable|string',
             'parent' => 'nullable|integer|exists:categories,id',
             'image' => 'nullable|string',
+            'type' => 'nullable|string|in:product,service',
+            'sort_order' => 'nullable|integer|min:0',
         ]);
+
+        // Validar profundidad máxima (3 niveles)
+        if (isset($data['parent'])) {
+            $parent = Category::find($data['parent']);
+            if ($parent && $parent->parent_id) {
+                $grandparent = Category::find($parent->parent_id);
+                if ($grandparent && $grandparent->parent_id !== null) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No se pueden crear categorías de más de 3 niveles de profundidad.',
+                    ], 422);
+                }
+            }
+        }
 
         $category = Category::create([
             'name' => $data['name'],
             'slug' => Str::slug($data['name']),
             'description' => $data['description'] ?? null,
             'parent_id' => $data['parent'] ?? null,
-            'image' => isset($data['image']) ? $data['image'] : null,
+            'image' => $data['image'] ?? null,
+            'type' => $data['type'] ?? 'product',
+            'sort_order' => $data['sort_order'] ?? 0,
         ]);
 
         return response()->json(new CategoryResource($category->loadCount('products')), 201);
@@ -105,6 +170,8 @@ final class CategoryController extends Controller
             'description' => 'nullable|string',
             'parent' => 'nullable|integer|exists:categories,id',
             'image' => 'nullable|string',
+            'type' => 'nullable|string|in:product,service',
+            'sort_order' => 'nullable|integer|min:0',
         ]);
 
         $updateData = [];
@@ -121,10 +188,37 @@ final class CategoryController extends Controller
         if (array_key_exists('image', $data)) {
             $updateData['image'] = $data['image'];
         }
+        if (array_key_exists('type', $data)) {
+            $updateData['type'] = $data['type'];
+        }
+        if (array_key_exists('sort_order', $data)) {
+            $updateData['sort_order'] = $data['sort_order'];
+        }
 
         $category->update($updateData);
 
         return response()->json(new CategoryResource($category->fresh()->loadCount('products')));
+    }
+
+    /**
+     * POST /api/categories/{id}/image
+     */
+    public function uploadImage(Request $request, int $id): JsonResponse
+    {
+        $category = Category::findOrFail($id);
+
+        $request->validate([
+            'image' => 'required|image|mimes:webp,png,jpg,jpeg|max:2048',
+        ]);
+
+        $path = $request->file('image')->store('img/categorias', 'public');
+
+        $category->update(['image' => '/storage/' . $path]);
+
+        return response()->json([
+            'success' => true,
+            'image' => '/storage/' . $path,
+        ]);
     }
 
     /**

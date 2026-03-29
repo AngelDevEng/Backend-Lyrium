@@ -30,7 +30,7 @@ final class CategoryTest extends TestCase
         $response = $this->getJson('/api/categories');
 
         $response->assertOk()
-            ->assertJsonCount(3);
+            ->assertJsonCount(3, 'data');
     }
 
     public function test_list_categories_as_tree(): void
@@ -42,7 +42,7 @@ final class CategoryTest extends TestCase
         $response = $this->getJson('/api/categories?tree=1');
 
         $response->assertOk()
-            ->assertJsonCount(2); // 2 root categories
+            ->assertJsonCount(2, 'data'); // 2 root categories
     }
 
     public function test_list_categories_hide_empty(): void
@@ -57,7 +57,7 @@ final class CategoryTest extends TestCase
         $response = $this->getJson('/api/categories?hide_empty=1');
 
         $response->assertOk()
-            ->assertJsonCount(1);
+            ->assertJsonCount(1, 'data');
     }
 
     // ─── SHOW (PUBLIC) ──────────────────────────────────────────────

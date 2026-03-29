@@ -24,16 +24,8 @@ class User extends Authenticatable
         'nicename',
         'avatar',
         'phone',
-        'phone_2',
         'document_type',
         'document_number',
-        'departamento',
-        'provincia',
-        'distrito',
-        'admin_nombre',
-        'admin_dni',
-        'is_seller',
-        'is_admin',
         'password',
         'email_verified_at',
         'google_id',
@@ -49,8 +41,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'is_seller' => 'boolean',
-            'is_admin' => 'boolean',
         ];
     }
 
@@ -84,17 +74,7 @@ class User extends Authenticatable
     // Rol para el frontend (administrator, seller, customer, logistics_operator)
     public function getFrontendRoleAttribute(): string
     {
-        if ($this->is_admin) {
-            return 'administrator';
-        }
-        if ($this->is_seller) {
-            return 'seller';
-        }
-        if ($this->hasRole('logistics_operator')) {
-            return 'logistics_operator';
-        }
-
-        return 'customer';
+        return $this->getRoleNames()->first() ?? 'customer';
     }
 
     public function reviews(): HasMany
