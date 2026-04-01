@@ -54,7 +54,7 @@ Backend-Lyrium
 6. En `Deploy -> Pre-deploy Command`, pega:
 
 ```bash
-php artisan migrate --force
+php artisan migrate --force && php artisan db:seed --force
 ```
 
 7. En `Deploy -> Custom Start Command`, dejalo vacio.
@@ -89,7 +89,7 @@ php artisan migrate --force
 
 - `Root Directory`: `Backend-Lyrium`
 - `Build Command`: `php artisan storage:link --force && php artisan config:cache && php artisan view:cache && npm run build`
-- `Pre-deploy Command`: `php artisan migrate --force`
+- `Pre-deploy Command`: `php artisan migrate --force && php artisan db:seed --force`
 - `Healthcheck Path`: `/up`
 - `Start Command`: dejar vacio o autodetect
 
@@ -145,6 +145,8 @@ Si te falla el build por `ext-exif`, deja tambien `RAILPACK_PHP_EXTENSIONS=exif`
 
 Duplica el servicio y usa:
 
+- Al crear el servicio en Railway, elige `GitHub Repository`
+- Selecciona el mismo repo del backend
 - `Root Directory`: `Backend-Lyrium`
 - `Build Command`: dejar vacio
 - `Start Command`: `chmod +x ./railway/run-worker.sh && sh ./railway/run-worker.sh`
@@ -156,6 +158,8 @@ Debe compartir las mismas variables de `app`.
 
 Duplica el servicio y usa:
 
+- Al crear el servicio en Railway, elige `GitHub Repository`
+- Selecciona el mismo repo del backend
 - `Root Directory`: `Backend-Lyrium`
 - `Build Command`: dejar vacio
 - `Start Command`: `chmod +x ./railway/run-cron.sh && sh ./railway/run-cron.sh`
@@ -167,6 +171,8 @@ Debe compartir las mismas variables de `app`.
 
 Agregalo solo si necesitas tiempo real.
 
+- Al crear el servicio en Railway, elige `GitHub Repository`
+- Selecciona el mismo repo del backend
 - `Root Directory`: `Backend-Lyrium`
 - `Build Command`: dejar vacio
 - `Start Command`: `chmod +x ./railway/run-reverb.sh && sh ./railway/run-reverb.sh`
@@ -187,6 +193,233 @@ REVERB_SCHEME=https
 ```
 
 Si activas `reverb`, esas variables deben existir tambien en `app`.
+
+### Cuando ya generaste el dominio de Reverb
+
+Si tu dominio publico de Reverb es, por ejemplo:
+
+```text
+servicio-reverb-production-60eb.up.railway.app
+```
+
+entonces no debes usar `:8080` en las variables publicas.
+
+Usa asi:
+
+```env
+REVERB_HOST=servicio-reverb-production-60eb.up.railway.app
+REVERB_PORT=443
+REVERB_SCHEME=https
+```
+
+El puerto `8080` queda como puerto interno del proceso. El cliente externo debe entrar por `443`.
+
+### Variables minimas en el servicio reverb
+
+```env
+APP_NAME=Lyrium BioMarketplace
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=TU_APP_KEY
+
+APP_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}
+FRONTEND_URL=http://localhost:3000
+
+DB_CONNECTION=mysql
+DB_URL=${{MySQL.MYSQL_URL}}
+
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+FILESYSTEM_DISK=public
+
+REVERB_APP_ID=TU_REVERB_APP_ID
+REVERB_APP_KEY=TU_REVERB_APP_KEY
+REVERB_APP_SECRET=TU_REVERB_APP_SECRET
+REVERB_HOST=servicio-reverb-production-60eb.up.railway.app
+REVERB_PORT=443
+REVERB_SCHEME=https
+```
+
+### Cambios que debes hacer tambien en app
+
+Cuando `reverb` ya exista, en el servicio `app` cambia:
+
+```env
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=TU_REVERB_APP_ID
+REVERB_APP_KEY=TU_REVERB_APP_KEY
+REVERB_APP_SECRET=TU_REVERB_APP_SECRET
+REVERB_HOST=servicio-reverb-production-60eb.up.railway.app
+REVERB_PORT=443
+REVERB_SCHEME=https
+```
+
+Despues haz `Redeploy` en `reverb` y tambien en `app`.
+
+### Frontend local apuntando a Railway
+
+En tu frontend local `F:\FRONTEND\fe-001-marketplace-admin\frontapp\.env.local`, deja al menos:
+
+```env
+NEXT_PUBLIC_API_MODE=laravel
+NEXT_PUBLIC_API_BACKEND=laravel
+NEXT_PUBLIC_LARAVEL_API_URL=https://TU-DOMINIO-DEL-APP.up.railway.app/api
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=TU_GOOGLE_CLIENT_ID
+
+NEXT_PUBLIC_REVERB_APP_KEY=TU_REVERB_APP_KEY
+NEXT_PUBLIC_REVERB_HOST=servicio-reverb-production-60eb.up.railway.app
+NEXT_PUBLIC_REVERB_PORT=443
+NEXT_PUBLIC_REVERB_SCHEME=https
+```
+
+Luego reinicia tu frontend local para que tome las nuevas variables.
+
+## Caso comun: copiar variables de app en reverb
+
+Si en el servicio `reverb` copiaste casi exactamente las variables de `app`, entonces esta mal.
+
+Errores tipicos:
+
+- `APP_URL=https://https://...` esta mal formado
+- `DB_URL` usando `hopper.proxy.rlwy.net` no es lo ideal dentro de Railway
+- `BROADCAST_CONNECTION=log` esta mal para `reverb`
+- faltan todas las variables `REVERB_*`
+
+### Bloque correcto para el servicio reverb
+
+Pega esto en `Raw Editor` del servicio `reverb`, sin comillas:
+
+```env
+APP_NAME=Lyrium BioMarketplace
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=base64:base64:HrWGIL7FjNIssHUFDhc2PGuEj+XZl2N5JZIShyNvSlo=
+
+APP_URL=https://servicio-reverb-production-60eb.up.railway.app
+FRONTEND_URL=http://localhost:3000
+
+APP_LOCALE=es
+APP_FALLBACK_LOCALE=en
+APP_FAKER_LOCALE=es_PE
+APP_MAINTENANCE_DRIVER=file
+BCRYPT_ROUNDS=12
+
+LOG_CHANNEL=stderr
+LOG_STDERR_FORMATTER=\Monolog\Formatter\JsonFormatter
+LOG_LEVEL=info
+
+DB_CONNECTION=mysql
+DB_URL=mysql://root:FeXLXTtsdFTaCCYbWhURZyRZmUiCoDLJ@hopper.proxy.rlwy.net:52381/railway
+
+RAILPACK_PHP_EXTENSIONS=exif
+
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+FILESYSTEM_DISK=public
+
+BROADCAST_CONNECTION=reverb
+
+REVERB_APP_ID=383068
+REVERB_APP_KEY=qzg5p7xmovk4uthurig0
+REVERB_APP_SECRET=j9k5e41ilpf0z0owdyei
+REVERB_HOST=servicio-reverb-production-60eb.up.railway.app
+REVERB_PORT=443
+REVERB_SCHEME=https
+
+MAIL_MAILER="resend"
+MAIL_FROM_ADDRESS="noreply@flexishopp.site"
+MAIL_FROM_NAME="Lyrium BioMarketplace"
+RESEND_API_KEY="re_Ff1xHwG1_Hw9YNgRchuYyQrYr8rgyeDm7"
+GOOGLE_CLIENT_ID="363073868682-tvls3e7t1lmr101js5sah0phn5aueeja.apps.googleusercontent.com"
+
+### Nota importante
+
+Despues de corregir `reverb`, tambien debes actualizar el servicio `app` para que use:
+
+```env
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=TU_REVERB_APP_ID
+REVERB_APP_KEY=TU_REVERB_APP_KEY
+REVERB_APP_SECRET=TU_REVERB_APP_SECRET
+REVERB_HOST=servicio-reverb-production-60eb.up.railway.app
+REVERB_PORT=443
+REVERB_SCHEME=https
+```
+
+Y luego hacer `Redeploy` en ambos servicios.
+
+## De donde salen REVERB_APP_ID, REVERB_APP_KEY y REVERB_APP_SECRET
+
+Railway no genera esos valores por ti.
+
+Tienes dos opciones:
+
+1. Reusar los mismos valores que ya usabas en local.
+2. Generar nuevos valores para produccion.
+
+Lo importante es esto:
+
+- `app` y `reverb` deben tener exactamente los mismos valores
+- el frontend solo necesita `NEXT_PUBLIC_REVERB_APP_KEY`
+- nunca pongas `REVERB_APP_SECRET` en el frontend
+
+Si quieres reutilizar los de tu entorno local, puedes tomar los mismos que ya usabas antes.
+
+Ejemplo:
+
+```env
+REVERB_APP_ID=383068
+REVERB_APP_KEY=qzg5p7xmovk4uthurig0
+REVERB_APP_SECRET=j9k5e41ilpf0z0owdyei
+```
+
+## Bloque minimo para app con Reverb activo
+
+```env
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=383068
+REVERB_APP_KEY=qzg5p7xmovk4uthurig0
+REVERB_APP_SECRET=j9k5e41ilpf0z0owdyei
+REVERB_HOST=servicio-reverb-production-60eb.up.railway.app
+REVERB_PORT=443
+REVERB_SCHEME=https
+```
+
+## Bloque minimo para reverb
+
+```env
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=383068
+REVERB_APP_KEY=qzg5p7xmovk4uthurig0
+REVERB_APP_SECRET=j9k5e41ilpf0z0owdyei
+REVERB_HOST=servicio-reverb-production-60eb.up.railway.app
+REVERB_PORT=443
+REVERB_SCHEME=https
+```
+
+## Bloque minimo para el frontend local
+
+En `F:\FRONTEND\fe-001-marketplace-admin\frontapp\.env.local`:
+
+```env
+NEXT_PUBLIC_API_MODE=laravel
+NEXT_PUBLIC_API_BACKEND=laravel
+NEXT_PUBLIC_LARAVEL_API_URL=https://TU-DOMINIO-DEL-APP.up.railway.app/api
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=363073868682-tvls3e7t1lmr101js5sah0phn5aueeja.apps.googleusercontent.com
+
+NEXT_PUBLIC_REVERB_APP_KEY=qzg5p7xmovk4uthurig0
+NEXT_PUBLIC_REVERB_HOST=servicio-reverb-production-60eb.up.railway.app
+NEXT_PUBLIC_REVERB_PORT=443
+NEXT_PUBLIC_REVERB_SCHEME=https
+```
+
+Despues:
+
+1. guarda variables en `reverb`
+2. haz `Redeploy` en `reverb`
+3. guarda variables en `app`
+4. haz `Redeploy` en `app`
+5. reinicia el frontend local
 
 ## 6. APP_URL y dominio
 
@@ -226,3 +459,21 @@ En la pantalla `Settings` del servicio:
 Y si ves `npm run migrate` ahora mismo, cambialo. Ese script no existe en [package.json](/F:/TEST/Backend-Lyrium/package.json#L5).
 
 Tampoco recomiendo usar `storage:link`, `chmod` o caches dentro de `Pre-deploy Command`, porque Railway indica que el pre-deploy corre en un contenedor separado y los cambios de filesystem no persisten.
+
+## Que opcion elegir al crear servicios
+
+Cuando crees `worker`, `cron` o `reverb` en Railway, elige:
+
+- `GitHub Repository`
+
+No elijas:
+
+- `Database`
+- `Template`
+- `Docker Image`
+- `Function`
+- `Bucket`
+- `Volume`
+- `Empty Service`
+
+La razon es que `worker`, `cron` y `reverb` salen del mismo codigo Laravel del backend.

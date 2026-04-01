@@ -9,7 +9,22 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
+        // Admin principal
         $admin = User::updateOrCreate(
+            ['email' => 'pierre@admin.com'],
+            [
+                'name' => 'Pierre Admin',
+                'username' => 'pierre_admin',
+                'nicename' => 'pierre-admin',
+                'phone' => '999000000',
+                'password' => 'password',
+                'email_verified_at' => now(),
+            ]
+        );
+        $admin->assignRole('administrator');
+
+        // Admin secundario (legacy)
+        $admin2 = User::updateOrCreate(
             ['email' => 'angel.enginner08@gmail.com'],
             [
                 'name' => 'Angel Engineer',
@@ -20,10 +35,10 @@ class AdminUserSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+        $admin2->assignRole('administrator');
 
-        $admin->assignRole('administrator');
-
-        $seller = User::updateOrCreate(
+        // Seller legacy
+        $seller2 = User::updateOrCreate(
             ['email' => 'angel.ipanaque.torre@gmail.com'],
             [
                 'name' => 'Angel Ipanque',
@@ -36,13 +51,12 @@ class AdminUserSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
-
-        $seller->assignRole('seller');
+        $seller2->assignRole('seller');
 
         $store = \App\Models\Store::updateOrCreate(
             ['ruc' => '20123456789'],
             [
-                'owner_id' => $seller->id,
+                'owner_id' => $seller2->id,
                 'trade_name' => 'BioTienda Demo',
                 'razon_social' => 'BioTienda Demo SAC',
                 'nombre_comercial' => 'BioTienda Demo',
