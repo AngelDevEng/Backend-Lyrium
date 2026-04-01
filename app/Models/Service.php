@@ -27,6 +27,7 @@ final class Service extends Model
 
     protected $fillable = [
         'store_id',
+        'category_id',
         'name',
         'description',
         'price',
@@ -52,6 +53,11 @@ final class Service extends Model
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     public function schedules(): HasMany

@@ -14,12 +14,20 @@ final class AdminTicketResource extends JsonResource
         $vendor = $this->user;
         $admin = $this->assignedAdmin;
         $currentUserId = $request->user()?->id;
+        $orderedMessages = $this->relationLoaded('messages')
+            ? $this->messages->sortBy('id')->values()
+            : null;
+        $lastMessage = $this->relationLoaded('latestMessage')
+            ? $this->latestMessage
+            : ($orderedMessages?->last());
+        $activityAt = $lastMessage?->created_at ?? $this->updated_at ?? $this->created_at;
 
         return [
             'id' => $this->id,
             'numero' => $this->ticket_number,
             'asunto' => $this->subject,
             'descripcion' => $this->description,
+            'ultimo_mensaje' => $lastMessage?->content ?? $this->description,
             'vendedor' => [
                 'id' => $vendor->id,
                 'nombre' => $vendor->name,
@@ -33,14 +41,17 @@ final class AdminTicketResource extends JsonResource
             'prioridad' => $this->mapPriority($this->priority),
             'estado' => $this->mapStatus($this->status),
             'fecha_creacion' => $this->created_at->toIso8601String(),
-            'fecha_actualizacion' => $this->updated_at->toIso8601String(),
+            'fecha_actualizacion' => $activityAt->toIso8601String(),
             'total_mensajes' => $this->messages_count ?? $this->messages->count(),
             'mensajes_sin_leer' => $currentUserId ? $this->unreadMessagesFor($currentUserId) : 0,
             'is_critical' => $this->is_critical,
             'is_escalated' => $this->is_escalated,
             'escalated_to' => $this->escalated_to,
             'satisfaction_rating' => $this->satisfaction_rating,
-            'mensajes' => TicketMessageResource::collection($this->whenLoaded('messages')),
+            'mensajes' => $this->when(
+                $orderedMessages !== null,
+                fn () => TicketMessageResource::collection($orderedMessages)
+            ),
         ];
     }
 

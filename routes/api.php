@@ -64,6 +64,8 @@ Route::get('/categories/mega-menu', [CategoryController::class, 'megaMenu']);
 Route::get('/categories/{id}', [CategoryController::class, 'show']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/services', [ServiceController::class, 'index']);
+Route::get('/services/{id}', [ServiceController::class, 'show']);
 Route::get('/reviews', [ReviewController::class, 'index']);
 Route::get('/reviews/{id}', [ReviewController::class, 'show']);
 
@@ -268,6 +270,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('admin/tickets')->group(function () {
             Route::get('/', [AdminTicketController::class, 'index']);
             Route::get('/{id}', [AdminTicketController::class, 'show']);
+            Route::get('/{id}/messages', [AdminTicketController::class, 'getMessages']);
             Route::post('/{id}/messages', [AdminTicketController::class, 'sendMessage']);
             Route::put('/{id}/status', [AdminTicketController::class, 'updateStatus']);
             Route::put('/{id}/assign', [AdminTicketController::class, 'assign']);
@@ -384,6 +387,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [TicketController::class, 'index']);
             Route::post('/', [TicketController::class, 'store']);
             Route::get('/{id}', [TicketController::class, 'show']);
+            Route::get('/{id}/messages', [TicketController::class, 'getMessages']);
             Route::post('/{id}/messages', [TicketController::class, 'sendMessage']);
             Route::put('/{id}/close', [TicketController::class, 'close']);
             Route::post('/{id}/survey', [TicketController::class, 'submitSurvey']);

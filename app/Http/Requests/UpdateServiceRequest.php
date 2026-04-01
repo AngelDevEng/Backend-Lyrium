@@ -23,6 +23,14 @@ final class UpdateServiceRequest extends FormRequest
             'status' => ['sometimes', 'in:active,inactive'],
             'cancellation_policy' => ['sometimes', 'in:no_refund,flexible,strict'],
             'max_cancellations' => ['sometimes', 'integer', 'min:1', 'max:10'],
+            'category_id' => ['nullable', 'exists:categories,id', function ($attribute, $value, $fail) {
+                if ($value) {
+                    $category = \App\Models\Category::find($value);
+                    if ($category && $category->type !== 'service') {
+                        $fail('La categoría debe ser de tipo servicio.');
+                    }
+                }
+            }],
             'schedules' => ['sometimes', 'array'],
             'schedules.*.day_of_week' => ['required_with:schedules', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
             'schedules.*.start_time' => ['required_with:schedules', 'date_format:H:i'],

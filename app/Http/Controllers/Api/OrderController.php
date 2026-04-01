@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\NewOrderReceived;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\CreateOrderRequest;
 use App\Http\Requests\Order\UpdateOrderStatusRequest;
@@ -194,6 +195,11 @@ final class OrderController extends Controller
         });
 
         $order->load(['items.product.store', 'user']);
+
+        // Notificar a cada tienda involucrada en la orden
+        $order->items->pluck('store_id')->unique()->each(
+            fn ($storeId) => broadcast(new NewOrderReceived($order, $storeId))
+        );
 
         return $this->created(new OrderResource($order));
     }

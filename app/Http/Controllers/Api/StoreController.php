@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\StoreStatusChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUpdateRequest;
 use App\Http\Resources\StoreResource;
@@ -169,6 +170,8 @@ final class StoreController extends Controller
             $data['status'],
             $data['reason'] ?? null,
         ));
+
+        broadcast(new StoreStatusChanged($store->fresh()));
 
         return response()->json(new StoreResource($store->fresh()->load(['owner', 'category'])));
     }

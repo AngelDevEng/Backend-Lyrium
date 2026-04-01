@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\TicketMessageReceived;
+use App\Events\TicketMessagesRead;
+use App\Events\TicketInboxUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SendTicketMessageRequest;
 use App\Http\Requests\StoreTicketRequest;
@@ -13,17 +16,21 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Notifications\TicketCreatedNotification;
 use App\Notifications\TicketRepliedNotification;
+use App\Services\TicketAttachmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final class TicketController extends Controller
 {
+    public function __construct(private readonly TicketAttachmentService $attachmentService) {}
+
     public function index(Request $request): JsonResponse
     {
         $tickets = Ticket::where('user_id', $request->user()->id)
             ->withCount('messages')
-            ->with('store', 'assignedAdmin')
-            ->latest()
+            ->with('store', 'assignedAdmin', 'latestMessage')
+            ->latest('updated_at')
             ->paginate(20);
 
         return response()->json([
@@ -40,14 +47,32 @@ final class TicketController extends Controller
     public function show(Request $request, int $id): JsonResponse
     {
         $ticket = Ticket::where('user_id', $request->user()->id)
-            ->with(['store', 'assignedAdmin', 'messages.user', 'messages.attachments'])
+            ->with([
+                'store',
+                'assignedAdmin',
+                'messages' => fn ($q) => $q->with(['user', 'attachments'])
+                    ->orderByDesc('id')
+                    ->limit(30),
+            ])
             ->withCount('messages')
             ->findOrFail($id);
+
+        // Reverse to chronological order for the resource
+        $ticket->setRelation('messages', $ticket->messages->reverse()->values());
+
+        $unread = $ticket->messages()
+            ->where('user_id', '!=', $request->user()->id)
+            ->where('is_read', false)
+            ->count();
 
         $ticket->messages()
             ->where('user_id', '!=', $request->user()->id)
             ->where('is_read', false)
             ->update(['is_read' => true]);
+
+        if ($unread > 0) {
+            broadcast(new TicketMessagesRead($ticket->id, $request->user()->id));
+        }
 
         return response()->json([
             'success' => true,
@@ -87,11 +112,15 @@ final class TicketController extends Controller
             'is_critical' => in_array($criticidad, ['alta', 'critica']),
         ]);
 
-        $ticket->messages()->create([
+        $initialMessage = $ticket->messages()->create([
             'user_id' => $user->id,
-            'content' => $request->input('mensaje'),
+            'content' => $request->input('mensaje', ''),
             'type' => 'normal',
         ]);
+
+        if ($request->hasFile('adjuntos')) {
+            $this->attachmentService->storeAttachments($initialMessage, $request->file('adjuntos'));
+        }
 
         $admins = User::role('administrator')->get();
         foreach ($admins as $admin) {
@@ -99,7 +128,22 @@ final class TicketController extends Controller
         }
 
         $ticket->refresh();
-        $ticket->load(['store', 'assignedAdmin', 'messages.user']);
+
+        $previewText = $request->filled('mensaje')
+            ? Str::limit($request->input('mensaje'), 100)
+            : $this->buildImagePreview($request->file('adjuntos') ?? []);
+        $updatedAt   = now()->toIso8601String();
+        foreach ($admins as $admin) {
+            broadcast(new TicketInboxUpdated(
+                $admin->id,
+                $ticket->id,
+                1,
+                $previewText,
+                1,
+                $updatedAt,
+            ));
+        }
+        $ticket->load(['store', 'assignedAdmin', 'messages.user', 'messages.attachments']);
         $ticket->loadCount('messages');
 
         return response()->json([
@@ -123,9 +167,13 @@ final class TicketController extends Controller
 
         $message = $ticket->messages()->create([
             'user_id' => $request->user()->id,
-            'content' => $request->input('content'),
+            'content' => $request->input('content', ''),
             'type' => 'normal',
         ]);
+
+        if ($request->hasFile('attachments')) {
+            $this->attachmentService->storeAttachments($message, $request->file('attachments'));
+        }
 
         if ($ticket->status === 'resolved') {
             $ticket->update(['status' => 'reopened']);
@@ -138,6 +186,25 @@ final class TicketController extends Controller
         }
 
         $message->load(['user', 'attachments']);
+        $message->setRelation('ticket', $ticket);
+        $ticket->touch();
+        broadcast(new TicketMessageReceived($message));
+        $previewText = $request->filled('content')
+            ? Str::limit($message->content, 100)
+            : $this->buildImagePreview($request->file('attachments') ?? []);
+        $totalMessages = $ticket->messages()->count();
+        $updatedAt = $message->created_at?->toIso8601String() ?? now()->toIso8601String();
+
+        User::role('administrator')->each(function (User $admin) use ($ticket, $previewText, $totalMessages, $updatedAt): void {
+            broadcast(new TicketInboxUpdated(
+                $admin->id,
+                $ticket->id,
+                $ticket->unreadMessagesFor($admin->id),
+                $previewText,
+                $totalMessages,
+                $updatedAt,
+            ));
+        });
 
         return response()->json([
             'success' => true,
@@ -168,10 +235,58 @@ final class TicketController extends Controller
             'type' => 'system',
         ]);
 
+        $previewText   = 'El vendedor cerró este ticket.';
+        $totalMessages = $ticket->messages()->count();
+        $updatedAt     = now()->toIso8601String();
+
+        User::role('administrator')->each(function (User $admin) use ($ticket, $previewText, $totalMessages, $updatedAt): void {
+            broadcast(new TicketInboxUpdated(
+                $admin->id,
+                $ticket->id,
+                $ticket->unreadMessagesFor($admin->id),
+                $previewText,
+                $totalMessages,
+                $updatedAt,
+            ));
+        });
+
         return response()->json([
             'success' => true,
             'message' => 'Ticket cerrado exitosamente.',
         ]);
+    }
+
+    public function getMessages(Request $request, int $id): JsonResponse
+    {
+        $ticket = Ticket::where('user_id', $request->user()->id)->findOrFail($id);
+
+        $query = $ticket->messages()
+            ->with(['user', 'attachments'])
+            ->orderByDesc('id');
+
+        if ($beforeId = $request->query('before_id')) {
+            $query->where('id', '<', (int) $beforeId);
+        }
+
+        $messages = $query->limit(30)->get();
+        $hasMore  = $messages->count() === 30;
+
+        return response()->json([
+            'success'  => true,
+            'data'     => \App\Http\Resources\TicketMessageResource::collection($messages->reverse()->values()),
+            'has_more' => $hasMore,
+        ]);
+    }
+
+    private function buildImagePreview(array $files): string
+    {
+        $count = count($files);
+
+        return match (true) {
+            $count === 0 => '',
+            $count === 1 => '[Imagen]',
+            default      => "[{$count} imágenes]",
+        };
     }
 
     public function submitSurvey(SubmitSurveyRequest $request, int $id): JsonResponse

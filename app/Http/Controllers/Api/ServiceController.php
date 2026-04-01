@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\NewBookingReceived;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BookServiceRequest;
 use App\Http\Requests\StoreServiceRequest;
@@ -22,12 +23,25 @@ final class ServiceController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $storeId = (int) $request->query('store_id');
+        $perPage = (int) $request->query('per_page', 15);
 
-        $services = $this->serviceService->paginateForStore(
-            storeId: $storeId,
-            perPage: (int) $request->query('per_page', 15)
-        );
+        // Seller/admin context: filter by their own store
+        if ($request->query('store_id')) {
+            $services = $this->serviceService->paginateForStore(
+                storeId: (int) $request->query('store_id'),
+                perPage: $perPage
+            );
+        } else {
+            // Public listing: only active services, supports category/search filters
+            $services = $this->serviceService->paginatePublic(
+                filters: [
+                    'category_id' => $request->query('category_id'),
+                    'category_slug' => $request->query('category_slug'),
+                    'search' => $request->query('search'),
+                ],
+                perPage: $perPage
+            );
+        }
 
         return response()->json([
             'data' => ServiceResource::collection($services->items()),
@@ -138,10 +152,10 @@ final class ServiceController extends Controller
             data: $request->validated()
         );
 
-        return response()->json(
-            new ServiceBookingResource($booking->load(['service', 'schedule'])),
-            201
-        );
+        $booking->load(['service', 'schedule', 'user']);
+        broadcast(new NewBookingReceived($booking));
+
+        return response()->json(new ServiceBookingResource($booking), 201);
     }
 
     public function myBookings(Request $request): JsonResponse

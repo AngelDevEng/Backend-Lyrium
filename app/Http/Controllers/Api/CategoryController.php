@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\CategoryUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CategoryResource;
 use App\Models\Category;
@@ -65,37 +66,38 @@ final class CategoryController extends Controller
     public function megaMenu(): JsonResponse
     {
         $categories = Category::whereNull('parent_id')
-            ->where('type', 'product')
             ->with(['children' => function ($q) {
                 $q->orderBy('sort_order')
                   ->with(['children' => function ($q2) {
                       $q2->orderBy('sort_order');
                   }]);
             }])
-            ->orderBy('sort_order')
+            ->orderBy('type')->orderBy('sort_order')
             ->get();
 
         return response()->json([
             'success' => true,
             'data' => $categories->map(function ($cat) {
+                $prefix = $cat->type === 'service' ? '/servicios' : '/productos';
                 return [
                     'id' => $cat->id,
                     'name' => $cat->name,
                     'slug' => $cat->slug,
-                    'image' => $cat->image,
-                    'children' => $cat->children->map(function ($sub) use ($cat) {
+                    'type' => $cat->type ?? 'product',
+                    'image' => $cat->image ? asset($cat->image) : null,
+                    'children' => $cat->children->map(function ($sub) use ($cat, $prefix) {
                         return [
                             'id' => $sub->id,
                             'name' => $sub->name,
                             'slug' => $sub->slug,
-                            'image' => $sub->image,
-                            'href' => '/productos/' . $cat->slug . '/' . $sub->slug,
-                            'children' => $sub->children->map(function ($subsub) use ($cat) {
+                            'image' => $sub->image ? asset($sub->image) : null,
+                            'href' => $prefix . '/' . $cat->slug . '/' . $sub->slug,
+                            'children' => $sub->children->map(function ($subsub) use ($cat, $prefix) {
                                 return [
                                     'id' => $subsub->id,
                                     'name' => $subsub->name,
                                     'slug' => $subsub->slug,
-                                    'href' => '/productos/' . $cat->slug . '/' . $subsub->slug,
+                                    'href' => $prefix . '/' . $cat->slug . '/' . $subsub->slug,
                                 ];
                             }),
                         ];
@@ -155,6 +157,8 @@ final class CategoryController extends Controller
             'sort_order' => $data['sort_order'] ?? 0,
         ]);
 
+        broadcast(new CategoryUpdated($category->loadCount('products'), 'created'));
+
         return response()->json(new CategoryResource($category->loadCount('products')), 201);
     }
 
@@ -197,6 +201,8 @@ final class CategoryController extends Controller
 
         $category->update($updateData);
 
+        broadcast(new CategoryUpdated($category->fresh()->loadCount('products'), 'updated'));
+
         return response()->json(new CategoryResource($category->fresh()->loadCount('products')));
     }
 
@@ -212,12 +218,13 @@ final class CategoryController extends Controller
         ]);
 
         $path = $request->file('image')->store('img/categorias', 'public');
+        $relativePath = '/storage/' . $path;
 
-        $category->update(['image' => '/storage/' . $path]);
+        $category->update(['image' => $relativePath]);
 
         return response()->json([
             'success' => true,
-            'image' => '/storage/' . $path,
+            'image' => asset($relativePath),
         ]);
     }
 
@@ -229,6 +236,8 @@ final class CategoryController extends Controller
         $category = Category::findOrFail($id);
         $category->products()->detach();
         $category->delete();
+
+        broadcast(new CategoryUpdated($category, 'deleted'));
 
         return response()->json(new CategoryResource($category));
     }

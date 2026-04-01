@@ -21,6 +21,10 @@ final class TicketStatusChangedNotification extends Notification
 
     public function via(object $notifiable): array
     {
+        if (app()->environment('local')) {
+            return ['database'];
+        }
+
         return ['mail', 'database'];
     }
 

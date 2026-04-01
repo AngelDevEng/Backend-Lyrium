@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Events\TicketInboxUpdated;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Notifications\TicketCreatedNotification;
 use App\Notifications\TicketRepliedNotification;
 use App\Notifications\TicketStatusChangedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 use Tests\Traits\WithRoles;
@@ -38,8 +40,15 @@ final class TicketTest extends TestCase
     public function test_seller_can_list_own_tickets(): void
     {
         $seller = $this->createSeller();
+        $ticket = $this->createTicketForSeller($seller);
         $this->createTicketForSeller($seller);
-        $this->createTicketForSeller($seller);
+        $admin = $this->createAdmin();
+
+        TicketMessage::factory()->create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $admin->id,
+            'is_read' => false,
+        ]);
 
         $otherSeller = $this->createSeller();
         $this->createTicketForSeller($otherSeller);
@@ -47,7 +56,8 @@ final class TicketTest extends TestCase
         $response = $this->actingAs($seller)->getJson('/api/tickets');
 
         $response->assertOk()
-            ->assertJsonCount(2, 'data');
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.mensajes_sin_leer', 1);
     }
 
     public function test_seller_can_create_ticket(): void
@@ -139,9 +149,11 @@ final class TicketTest extends TestCase
 
     public function test_seller_can_send_message(): void
     {
+        Event::fake([TicketInboxUpdated::class]);
         Notification::fake();
         $seller = $this->createSeller();
         $admin = $this->createAdmin();
+        $otherAdmin = $this->createAdmin();
         $ticket = $this->createTicketForSeller($seller, [
             'assigned_admin_id' => $admin->id,
         ]);
@@ -154,6 +166,36 @@ final class TicketTest extends TestCase
             ->assertJsonPath('data.texto', 'Ya adjunté los documentos solicitados.');
 
         Notification::assertSentTo($admin, TicketRepliedNotification::class);
+        Event::assertDispatched(TicketInboxUpdated::class, fn (TicketInboxUpdated $event) => $event->notifyUserId === $admin->id
+            && $event->unreadCount === 1
+            && $event->totalMessages >= 1
+            && $event->ticketId === $ticket->id);
+        Event::assertDispatched(TicketInboxUpdated::class, fn (TicketInboxUpdated $event) => $event->notifyUserId === $otherAdmin->id
+            && $event->ticketId === $ticket->id);
+    }
+
+    public function test_seller_message_notifies_all_admins_when_ticket_has_no_assignee(): void
+    {
+        Event::fake([TicketInboxUpdated::class]);
+        $seller = $this->createSeller();
+        $adminA = $this->createAdmin();
+        $adminB = $this->createAdmin();
+        $ticket = $this->createTicketForSeller($seller, [
+            'assigned_admin_id' => null,
+        ]);
+
+        $response = $this->actingAs($seller)->postJson("/api/tickets/{$ticket->id}/messages", [
+            'content' => 'Necesito ayuda con este ticket sin asignacion.',
+        ]);
+
+        $response->assertCreated();
+
+        Event::assertDispatched(TicketInboxUpdated::class, fn (TicketInboxUpdated $event) => $event->notifyUserId === $adminA->id
+            && $event->unreadCount === 1
+            && $event->ticketId === $ticket->id);
+        Event::assertDispatched(TicketInboxUpdated::class, fn (TicketInboxUpdated $event) => $event->notifyUserId === $adminB->id
+            && $event->unreadCount === 1
+            && $event->ticketId === $ticket->id);
     }
 
     public function test_seller_cannot_message_closed_ticket(): void
@@ -285,6 +327,7 @@ final class TicketTest extends TestCase
 
     public function test_admin_can_reply_to_ticket(): void
     {
+        Event::fake([TicketInboxUpdated::class]);
         Notification::fake();
         $admin = $this->createAdmin();
         $seller = $this->createSeller();
@@ -303,6 +346,10 @@ final class TicketTest extends TestCase
         ]);
 
         Notification::assertSentTo($seller, TicketRepliedNotification::class);
+        Event::assertDispatched(TicketInboxUpdated::class, fn (TicketInboxUpdated $event) => $event->notifyUserId === $seller->id
+            && $event->unreadCount === 1
+            && $event->totalMessages >= 1
+            && $event->ticketId === $ticket->id);
     }
 
     public function test_admin_can_change_ticket_status(): void

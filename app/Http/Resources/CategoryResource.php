@@ -15,7 +15,7 @@ final class CategoryResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
-            'image' => $this->image ? ['src' => $this->image] : null,
+            'image' => $this->image ? ['src' => asset($this->image)] : null,
             'description' => $this->description ?? '',
             'type' => $this->type ?? 'product',
             'sort_order' => $this->sort_order ?? 0,

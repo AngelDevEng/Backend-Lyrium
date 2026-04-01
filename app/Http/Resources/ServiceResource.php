@@ -20,6 +20,13 @@ final class ServiceResource extends JsonResource
             'status' => $this->status,
             'cancellation_policy' => $this->cancellation_policy,
             'max_cancellations' => $this->max_cancellations,
+            'category_id' => $this->category_id,
+            'category' => $this->whenLoaded('category', fn () => [
+                'id' => $this->category->id,
+                'name' => $this->category->name,
+                'slug' => $this->category->slug,
+                'type' => $this->category->type,
+            ]),
             'schedules' => $this->whenLoaded('schedules', fn () => ServiceScheduleResource::collection($this->schedules)),
             'store' => $this->whenLoaded('store', fn () => [
                 'id' => $this->store->id,

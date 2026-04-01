@@ -22,9 +22,39 @@ final class ServiceService
 
         return Service::query()
             ->where('store_id', $storeId)
-            ->with(['schedules'])
+            ->with(['schedules', 'category'])
             ->latest()
             ->paginate($perPage);
+    }
+
+    public function paginatePublic(array $filters = [], int $perPage = self::DEFAULT_PER_PAGE): LengthAwarePaginator
+    {
+        $perPage = min($perPage, self::MAX_PER_PAGE);
+
+        $query = Service::query()
+            ->where('status', Service::STATUS_ACTIVE)
+            ->with(['store', 'schedules', 'category']);
+
+        if (! empty($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+
+        if (! empty($filters['category_slug'])) {
+            $query->whereHas('category', fn ($q) => $q->where('slug', $filters['category_slug']));
+        }
+
+        if (! empty($filters['store_id'])) {
+            $query->where('store_id', $filters['store_id']);
+        }
+
+        if (! empty($filters['search'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('name', 'like', "%{$filters['search']}%")
+                    ->orWhere('description', 'like', "%{$filters['search']}%");
+            });
+        }
+
+        return $query->latest()->paginate($perPage);
     }
 
     public function getActiveByStore(int $storeId): Collection
@@ -32,7 +62,7 @@ final class ServiceService
         return Service::query()
             ->where('store_id', $storeId)
             ->where('status', Service::STATUS_ACTIVE)
-            ->with(['schedules' => function ($query) {
+            ->with(['category', 'schedules' => function ($query) {
                 $query->where('is_active', true);
             }])
             ->get();
@@ -41,7 +71,7 @@ final class ServiceService
     public function findOrFail(int $id): Service
     {
         return Service::query()
-            ->with(['store', 'schedules'])
+            ->with(['store', 'schedules', 'category'])
             ->findOrFail($id);
     }
 

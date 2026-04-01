@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class Ticket extends Model
@@ -59,6 +60,11 @@ final class Ticket extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(TicketMessage::class)->orderBy('created_at');
+    }
+
+    public function latestMessage(): HasOne
+    {
+        return $this->hasOne(TicketMessage::class)->latestOfMany();
     }
 
     public static function generateTicketNumber(): string

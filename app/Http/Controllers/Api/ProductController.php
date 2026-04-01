@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\ProductStatusChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
@@ -393,6 +394,8 @@ final class ProductController extends Controller
 
         $product->update(['status' => $data['status']]);
         $product->load(['categories', 'mainAttributes', 'additionalAttributes']);
+
+        broadcast(new ProductStatusChanged($product));
 
         return response()->json(new ProductResource($product));
     }

@@ -13,17 +13,27 @@ final class TicketResource extends JsonResource
     {
         $store = $this->store;
         $admin = $this->assignedAdmin;
+        $currentUserId = $request->user()?->id;
+        $orderedMessages = $this->relationLoaded('messages')
+            ? $this->messages->sortBy('id')->values()
+            : null;
+        $lastMessage = $this->relationLoaded('latestMessage')
+            ? $this->latestMessage
+            : ($orderedMessages?->last());
+        $activityAt = $lastMessage?->created_at ?? $this->updated_at ?? $this->created_at;
 
         return [
             'id' => $this->id,
             'id_display' => str_replace('TKT-', '', $this->ticket_number),
             'titulo' => $this->subject,
             'descripcion' => $this->description,
+            'ultimo_mensaje' => $lastMessage?->content ?? $this->description,
             'status' => $this->mapStatus($this->status),
             'type' => $this->category,
             'critical' => $this->is_critical,
-            'tiempo' => $this->created_at->diffForHumans(),
+            'tiempo' => $activityAt->diffForHumans(),
             'mensajes_count' => $this->messages_count ?? $this->messages->count(),
+            'mensajes_sin_leer' => $currentUserId ? $this->unreadMessagesFor($currentUserId) : 0,
             'survey_required' => $this->status === 'closed' && $this->satisfaction_rating === null,
             'satisfaction_rating' => $this->satisfaction_rating,
             'satisfaction_comment' => $this->satisfaction_comment,
@@ -39,7 +49,18 @@ final class TicketResource extends JsonResource
                 'numeros' => $admin?->phone ?? '',
                 'correo' => $admin?->email ?? '',
             ],
-            'mensajes' => TicketMessageResource::collection($this->whenLoaded('messages')),
+            'mensajes'            => $this->when(
+                $orderedMessages !== null,
+                fn () => TicketMessageResource::collection($orderedMessages)
+            ),
+            'has_more_messages'   => $this->when(
+                $orderedMessages !== null,
+                fn () => $this->messages_count > $orderedMessages->count()
+            ),
+            'oldest_message_id'   => $this->when(
+                $orderedMessages !== null && $orderedMessages->isNotEmpty(),
+                fn () => $orderedMessages->first()?->id
+            ),
         ];
     }
 
