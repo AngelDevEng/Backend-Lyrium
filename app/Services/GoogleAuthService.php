@@ -57,9 +57,15 @@ final class GoogleAuthService
         if ($user) {
             $user->update([
                 'google_id' => $googleData['google_id'],
-                'avatar' => $user->avatar ?? $googleData['avatar'],
                 'email_verified_at' => $user->email_verified_at ?? now(),
             ]);
+
+            if ($googleData['avatar'] && ! $user->profile?->avatar) {
+                $user->profile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    ['avatar' => $googleData['avatar']]
+                );
+            }
 
             return ['user' => $user, 'is_new_user' => false];
         }
@@ -76,14 +82,19 @@ final class GoogleAuthService
             'name' => $googleData['name'],
             'username' => $username,
             'email' => $googleData['email'],
-            'nicename' => Str::slug($googleData['name']),
             'google_id' => $googleData['google_id'],
-            'avatar' => $googleData['avatar'],
             'email_verified_at' => $googleData['email_verified'] ? now() : null,
             'password' => null,
         ]);
 
         $user->assignRole('customer');
+
+        if ($googleData['avatar']) {
+            $user->profile()->create([
+                'profile_type' => 'customer',
+                'avatar' => $googleData['avatar'],
+            ]);
+        }
 
         return ['user' => $user, 'is_new_user' => true];
     }

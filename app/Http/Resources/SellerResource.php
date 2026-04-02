@@ -18,7 +18,7 @@ final class SellerResource extends JsonResource
             'username' => $this->username,
             'displayName' => $this->name,
             'role' => $this->frontend_role,
-            'avatar' => $this->avatar,
+            'avatar' => $this->profile?->avatar,
             'emailVerifiedAt' => $this->email_verified_at?->toIso8601String(),
             'store' => $this->when(
                 $this->relationLoaded('stores') && $this->stores->isNotEmpty(),

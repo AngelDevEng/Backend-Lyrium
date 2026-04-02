@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use App\Models\Category;
 use Illuminate\Database\Seeder;
 
-class CategorySeeder extends Seeder
+final class CategorySeeder extends Seeder
 {
     private const PRODUCT_CATEGORIES = [
         [
@@ -75,8 +75,8 @@ class CategorySeeder extends Seeder
             'name' => 'Belleza',
             'slug' => 'productos-belleza',
             'description' => 'Productos de belleza y cuidado personal',
-            'image' => '/storage/img/categorias/productos/belleza.webp',
-            'sort_order' => 2,
+            'image' => '/img/categorias/productos/belleza.webp',
+            'sort_order' => 1,
             'type' => 'product',
             'children' => [
                 [
@@ -201,8 +201,8 @@ class CategorySeeder extends Seeder
             'name' => 'Bienestar físico y deportes',
             'slug' => 'productos-bienestar-fisico',
             'description' => 'Productos para bienestar físico y deporte',
-            'image' => '/storage/img/categorias/productos/bienestar-fisico-deporte.png',
-            'sort_order' => 4,
+            'image' => '/img/categorias/productos/bienestar-fisico-deporte.png',
+            'sort_order' => 2,
             'type' => 'product',
             'children' => [
                 [
@@ -273,8 +273,8 @@ class CategorySeeder extends Seeder
             'name' => 'Digestión saludable',
             'slug' => 'productos-digestion-saludable',
             'description' => 'Productos para digestión saludable',
-            'image' => '/storage/img/categorias/productos/digestion-saludable.png',
-            'sort_order' => 5,
+            'image' => '/img/categorias/productos/digestion-saludable.png',
+            'sort_order' => 3,
             'type' => 'product',
             'children' => [
                 [
@@ -347,8 +347,8 @@ class CategorySeeder extends Seeder
             'name' => 'Equipos y dispositivos médicos',
             'slug' => 'productos-equipos-medicos',
             'description' => 'Equipos y dispositivos médicos',
-            'image' => '/storage/img/categorias/productos/equipos y dispositivos-medicos.png',
-            'sort_order' => 6,
+            'image' => '/img/categorias/productos/equipos y dispositivos-medicos.png',
+            'sort_order' => 4,
             'type' => 'product',
             'children' => [
                 [
@@ -420,8 +420,8 @@ class CategorySeeder extends Seeder
             'name' => 'Mascotas',
             'slug' => 'productos-mascotas',
             'description' => 'Productos para mascotas',
-            'image' => '/storage/img/categorias/productos/mascotas.png',
-            'sort_order' => 7,
+            'image' => '/img/categorias/productos/mascotas.png',
+            'sort_order' => 5,
             'type' => 'product',
             'children' => [
                 [
@@ -487,8 +487,8 @@ class CategorySeeder extends Seeder
             'name' => 'Protección, limpieza y desinfección',
             'slug' => 'productos-limpieza',
             'description' => 'Productos de protección, limpieza y desinfección',
-            'image' => '/storage/img/categorias/productos/protecion-limpieza-desinfencion.png',
-            'sort_order' => 8,
+            'image' => '/img/categorias/productos/protecion-limpieza-desinfencion.png',
+            'sort_order' => 6,
             'type' => 'product',
             'children' => [
                 [
@@ -542,8 +542,8 @@ class CategorySeeder extends Seeder
             'name' => 'Suplementos vitamínicos',
             'slug' => 'productos-suplementos',
             'description' => 'Suplementos vitamínicos y nutricionales',
-            'image' => '/storage/img/categorias/productos/sumplementos-vitaminicos.png',
-            'sort_order' => 9,
+            'image' => '/img/categorias/productos/sumplementos-vitaminicos.png',
+            'sort_order' => 7,
             'type' => 'product',
             'children' => [
                 [
@@ -619,11 +619,43 @@ class CategorySeeder extends Seeder
 
     private const SERVICE_CATEGORIES = [
         [
-            'name' => 'Servicios médicos',
+            'name' => 'Belleza',
+            'slug' => 'servicios-belleza',
+            'description' => 'Servicios de belleza y cuidado personal',
+            'image' => '/img/categorias/servicios/belleza.webp',
+            'sort_order' => 1,
+            'type' => 'service',
+        ],
+        [
+            'name' => 'Deportes',
+            'slug' => 'servicios-deportes',
+            'description' => 'Servicios deportivos y actividad física',
+            'image' => '/img/categorias/servicios/deportes.webp',
+            'sort_order' => 2,
+            'type' => 'service',
+        ],
+        [
+            'name' => 'Ecológicos',
+            'slug' => 'servicios-ecologicos',
+            'description' => 'Productos y servicios ecológicos',
+            'image' => '/img/categorias/servicios/ecologicos.webp',
+            'sort_order' => 3,
+            'type' => 'service',
+        ],
+        [
+            'name' => 'Mascotas',
+            'slug' => 'servicios-mascotas',
+            'description' => 'Servicios para mascotas',
+            'image' => '/img/categorias/servicios/mascotas.webp',
+            'sort_order' => 4,
+            'type' => 'service',
+        ],
+        [
+            'name' => 'Médicos',
             'slug' => 'servicios-medicos',
             'description' => 'Servicios médicos profesionales',
-            'image' => '/storage/img/categorias/servicios/medicos.webp',
-            'sort_order' => 1,
+            'image' => '/img/categorias/servicios/medicos.webp',
+            'sort_order' => 5,
             'type' => 'service',
             'children' => [
                 [
@@ -679,43 +711,11 @@ class CategorySeeder extends Seeder
             ],
         ],
         [
-            'name' => 'Belleza servicios',
-            'slug' => 'servicios-belleza',
-            'description' => 'Servicios de belleza y cuidado personal',
-            'image' => '/storage/img/categorias/servicios/belleza.webp',
-            'sort_order' => 2,
-            'type' => 'service',
-            'children' => [
-                [
-                    'name' => 'Tratamientos faciales',
-                    'slug' => 'servicios-belleza-faciales',
-                    'image' => '/img/Servicios/Belleza/1.svg',
-                    'sort_order' => 1,
-                    'children' => [
-                        ['name' => 'Limpieza facial', 'slug' => 'servicios-belleza-limpieza', 'sort_order' => 1],
-                        ['name' => 'Hidratación facial', 'slug' => 'servicios-belleza-hidratacion', 'sort_order' => 2],
-                        ['name' => 'Antiaging', 'slug' => 'servicios-belleza-antiaging', 'sort_order' => 3],
-                    ],
-                ],
-                [
-                    'name' => 'Tratamientos corporales',
-                    'slug' => 'servicios-belleza-corporales',
-                    'image' => '/img/Servicios/Belleza/2.svg',
-                    'sort_order' => 2,
-                    'children' => [
-                        ['name' => 'Masajes reductores', 'slug' => 'servicios-belleza-masajes', 'sort_order' => 1],
-                        ['name' => 'Drenaje linfático', 'slug' => 'servicios-belleza-drenaje', 'sort_order' => 2],
-                        ['name' => 'Tratamientos celulitis', 'slug' => 'servicios-belleza-celulitis', 'sort_order' => 3],
-                    ],
-                ],
-            ],
-        ],
-        [
-            'name' => 'Deportes servicios',
-            'slug' => 'servicios-deportes',
-            'description' => 'Servicios deportivos y actividad física',
-            'image' => '/storage/img/categorias/servicios/deportes.webp',
-            'sort_order' => 3,
+            'name' => 'Sociales',
+            'slug' => 'servicios-sociales',
+            'description' => 'Servicios sociales y comunitarios',
+            'image' => '/img/categorias/servicios/sociales.webp',
+            'sort_order' => 7,
             'type' => 'service',
             'children' => [
                 [

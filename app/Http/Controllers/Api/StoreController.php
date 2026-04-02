@@ -10,6 +10,7 @@ use App\Http\Requests\StoreUpdateRequest;
 use App\Http\Resources\StoreResource;
 use App\Models\Store;
 use App\Notifications\StoreStatusNotification;
+use App\Services\StoreService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -24,7 +25,18 @@ final class StoreController extends Controller
     {
         $user = $request->user();
 
-        $store = Store::with(['category', 'subscription.plan', 'branches'])
+        $store = Store::with([
+            'category',
+            'subscription.plan',
+            'branches',
+            'legalRepresentative',
+            'contacts',
+            'banking',
+            'socialMedia',
+            'locations',
+            'presentation',
+            'insignia',
+        ])
             ->where('owner_id', $user->id)
             ->first();
 
@@ -50,6 +62,7 @@ final class StoreController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('trade_name', 'like', "%{$search}%")
+                    ->orWhere('trade_name_deprecated', 'like', "%{$search}%")
                     ->orWhere('ruc', 'like', "%{$search}%")
                     ->orWhere('corporate_email', 'like', "%{$search}%")
                     ->orWhere('razon_social', 'like', "%{$search}%");
@@ -86,7 +99,17 @@ final class StoreController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $store = Store::with(['owner', 'subscription.plan', 'category'])->findOrFail($id);
+        $store = Store::with([
+            'owner',
+            'subscription.plan',
+            'category',
+            'legalRepresentative',
+            'contacts',
+            'banking',
+            'socialMedia',
+            'locations',
+            'presentation',
+        ])->findOrFail($id);
 
         return response()->json(new StoreResource($store));
     }
@@ -101,28 +124,39 @@ final class StoreController extends Controller
             'ruc' => 'required|string|size:11|unique:stores,ruc',
             'corporate_email' => 'required|email',
             'description' => 'nullable|string',
-            'phone' => 'nullable|string|max:20',
             'razon_social' => 'nullable|string|max:255',
-            'nombre_comercial' => 'nullable|string|max:255',
-            'rep_legal_nombre' => 'nullable|string|max:255',
-            'rep_legal_dni' => 'nullable|string|max:20',
             'experience_years' => 'nullable|integer|min:0|max:100',
             'tax_condition' => 'nullable|string|max:100',
-            'direccion_fiscal' => 'nullable|string',
             'category_id' => 'nullable|integer|exists:categories,id',
-            'address' => 'nullable|string',
+            'contacts' => 'nullable|array',
+            'socialMedia' => 'nullable|array',
+            'legalRepresentative' => 'nullable|array',
+            'banking' => 'nullable|array',
+            'locations' => 'nullable|array',
         ]);
 
         $data['owner_id'] = $request->user()->id;
         $data['slug'] = Str::slug($data['trade_name']);
 
-        $store = Store::create($data);
+        $hasRelations = isset($data['contacts']) || isset($data['socialMedia'])
+            || isset($data['legalRepresentative']) || isset($data['banking'])
+            || isset($data['locations']);
+
+        if ($hasRelations) {
+            $service = app(StoreService::class);
+            $store = Store::create($data);
+            $service->updateWithRelations($store, $data);
+            $store = $store->fresh()->load(['owner', 'category', 'contacts', 'socialMedia', 'banking', 'legalRepresentative', 'locations']);
+        } else {
+            $store = Store::create($data);
+        }
 
         return response()->json(new StoreResource($store), 201);
     }
 
     /**
      * PUT /api/stores/{id}
+     * Actualiza la tienda con soporte para relaciones anidadas
      */
     public function update(StoreUpdateRequest $request, int $id): JsonResponse
     {
@@ -130,13 +164,29 @@ final class StoreController extends Controller
 
         $data = $request->validated();
 
-        if (isset($data['bank_secondary'])) {
-            $data['bank_secondary'] = json_encode($data['bank_secondary']);
+        // Verificar si hay datos de relaciones anidadas
+        $hasRelations = isset($data['store'])
+            || isset($data['legalRepresentative'])
+            || isset($data['contacts'])
+            || isset($data['banking'])
+            || isset($data['socialMedia'])
+            || isset($data['location'])
+            || isset($data['presentation']);
+
+        if ($hasRelations) {
+            $service = new StoreService;
+            $store = $service->updateWithRelations($store, $data);
+        } else {
+            if (isset($data['bank_secondary'])) {
+                $data['bank_secondary'] = json_encode($data['bank_secondary']);
+            }
+
+            $store->update($data);
+
+            $store = $store->fresh()->load(['owner', 'category']);
         }
 
-        $store->update($data);
-
-        return response()->json(new StoreResource($store->fresh()->load(['owner', 'category'])));
+        return response()->json(new StoreResource($store));
     }
 
     /**
@@ -202,6 +252,7 @@ final class StoreController extends Controller
     /**
      * PUT /api/stores/{id}/branches
      * Actualizar todas las sucursales (sync)
+     * Solo una sucursal puede ser principal
      */
     public function updateBranches(Request $request, int $id): JsonResponse
     {
@@ -227,12 +278,21 @@ final class StoreController extends Controller
             $store->branches()->whereIn('id', $toDelete)->delete();
         }
 
+        $hasNewPrincipal = false;
         foreach ($data['branches'] as $branchData) {
+            $isPrincipal = $branchData['is_principal'] ?? false;
+            $branchId = $branchData['id'] ?? null;
+
+            if ($isPrincipal) {
+                $hasNewPrincipal = true;
+                $store->branches()->where('is_principal', true)->update(['is_principal' => false]);
+            }
+
             $branchData['store_id'] = $store->id;
             unset($branchData['id']);
 
             $store->branches()->updateOrCreate(
-                ['id' => $branchData['id'] ?? null],
+                ['id' => $branchId],
                 $branchData
             );
         }
@@ -255,20 +315,42 @@ final class StoreController extends Controller
 
         $data = $request->validate([
             'layout' => 'required|in:1,2,3',
-            'logo' => 'nullable|url',
-            'banner' => 'nullable|url',
-            'banner_secondary' => 'nullable|url',
+            'logo' => 'nullable|file|image|max:2048',
+            'banner' => 'nullable|file|image|max:4096',
+            'banner_secondary' => 'nullable|file|image|max:4096',
             'gallery' => 'nullable|array',
-            'gallery.*' => 'url',
+            'gallery.*' => 'file|image|max:2048',
         ]);
 
-        $store->update([
-            'layout' => $data['layout'],
-            'logo' => $data['logo'] ?? $store->logo,
-            'banner' => $data['banner'] ?? $store->banner,
-            'banner2' => $data['banner_secondary'] ?? $store->banner2,
-            'gallery' => $data['gallery'] ?? $store->gallery,
-        ]);
+        $store->update(['layout' => $data['layout']]);
+
+        if ($request->hasFile('logo')) {
+            $store->clearMediaCollection('logo');
+            $store->addMediaFromRequest('file')->toMediaCollection('logo');
+        }
+
+        if ($request->hasFile('banner')) {
+            $store->clearMediaCollection('banner');
+            $store->addMediaFromRequest('banner')->toMediaCollection('banner');
+        }
+
+        if ($request->hasFile('banner_secondary')) {
+            $store->clearMediaCollection('banner2');
+            $store->addMediaFromRequest('banner_secondary')->toMediaCollection('banner2');
+        }
+
+        if ($request->hasFile('gallery')) {
+            $galleryUrls = [];
+            foreach ($request->file('gallery') as $file) {
+                $media = $store->addMedia($file)->toMediaCollection('gallery');
+                $galleryUrls[] = $media->getUrl();
+            }
+
+            $currentGallery = $store->media()->where('collection_name', 'gallery')->get();
+            foreach ($currentGallery as $item) {
+                $galleryUrls[] = $item->getUrl();
+            }
+        }
 
         return response()->json(new StoreResource($store->fresh()));
     }
@@ -292,8 +374,6 @@ final class StoreController extends Controller
 
         $store->clearMediaCollection('logo');
         $media = $store->addMediaFromRequest('file')->toMediaCollection('logo');
-
-        $store->update(['logo' => $media->getUrl()]);
 
         return response()->json([
             'url' => $media->getUrl(),
@@ -324,9 +404,6 @@ final class StoreController extends Controller
 
         $store->clearMediaCollection($collection);
         $media = $store->addMediaFromRequest('file')->toMediaCollection($collection);
-
-        $column = $collection === 'banner2' ? 'banner2' : 'banner';
-        $store->update([$column => $media->getUrl()]);
 
         return response()->json([
             'url' => $media->getUrl(),
@@ -360,12 +437,8 @@ final class StoreController extends Controller
             }
         }
 
-        $currentGallery = $store->gallery ?? [];
-        $store->update(['gallery' => array_merge($currentGallery, $urls)]);
-
         return response()->json([
             'urls' => $urls,
-            'gallery' => $store->fresh()->gallery,
             'message' => count($urls).' imágenes agregadas a la galería',
         ]);
     }
@@ -383,21 +456,95 @@ final class StoreController extends Controller
             return response()->json(['message' => 'No tienes una tienda registrada'], 404);
         }
 
-        $gallery = $store->gallery ?? [];
+        $gallery = $store->media()->where('collection_name', 'gallery')->get();
 
         if (! isset($gallery[$index])) {
             return response()->json(['message' => 'Imagen no encontrada'], 404);
         }
 
-        $media = $store->media()->where('collection_name', 'gallery')->get()[$index] ?? null;
-        $media?->delete();
-
-        array_splice($gallery, $index, 1);
-        $store->update(['gallery' => array_values($gallery)]);
+        $gallery[$index]->delete();
 
         return response()->json([
-            'gallery' => $store->fresh()->gallery,
             'message' => 'Imagen eliminada correctamente',
         ]);
+    }
+
+    /**
+     * GET /api/stores/{id}/badges
+     * Retorna los badges activos del vendedor
+     */
+    public function getStoreBadges(int $id): JsonResponse
+    {
+        $store = Store::findOrFail($id);
+
+        $store->calculateAndSyncBadges();
+
+        $badges = $store->activeBadges()
+            ->with('badge')
+            ->get()
+            ->map(fn ($sb) => [
+                'type' => $sb->badge->type,
+                'name' => $sb->badge->name,
+                'description' => $sb->badge->description,
+                'icon' => $sb->badge->icon,
+                'earned_at' => $sb->earned_at?->toIso8601String(),
+            ]);
+
+        return response()->json([
+            'data' => $badges,
+        ]);
+    }
+
+    /**
+     * POST /api/stores/{id}/insignia/request
+     * El vendedor solicita la insignia premium
+     */
+    public function requestInsignia(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $store = Store::where('owner_id', $user->id)->with('insignia')->findOrFail($id);
+
+        if (! $store->canRequestInsignia()) {
+            return response()->json([
+                'message' => 'No puedes solicitar la insignia en este momento.',
+            ], 400);
+        }
+
+        $store->requestInsignia();
+
+        return response()->json([
+            'message' => 'Solicitud de insignia enviada correctamente.',
+            'insignia' => $store->fresh()->insignia,
+        ]);
+    }
+
+    /**
+     * PUT /api/stores/{id}/insignia/approve
+     * El admin aprueba o rechaza la insignia premium
+     */
+    public function manageInsignia(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'action' => ['required', 'in:approve,reject'],
+        ]);
+
+        $store = Store::with('insignia')->findOrFail($id);
+        $action = $request->input('action');
+        $adminId = $request->user()->id;
+
+        if ($action === 'approve') {
+            $store->grantPremiumInsignia($adminId);
+
+            return response()->json([
+                'message' => 'Insignia premium otorgada correctamente.',
+                'insignia' => $store->fresh()->insignia,
+            ]);
+        } else {
+            $store->rejectInsigniaRequest();
+
+            return response()->json([
+                'message' => 'Solicitud de insignia rechazada.',
+            ]);
+        }
     }
 }

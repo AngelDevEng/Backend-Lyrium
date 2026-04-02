@@ -70,7 +70,9 @@ final class ProductController extends Controller
         }
 
         if ($status = $request->query('status')) {
-            $query->where('status', $status);
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
         }
 
         if ($type = $request->query('type')) {
@@ -385,6 +387,13 @@ final class ProductController extends Controller
      */
     public function updateStatus(Request $request, string $id): JsonResponse
     {
+        \Log::info('========== updateStatus() INICIADO ==========', [
+            'product_id' => $id,
+            'status_recibido' => $request->input('status'),
+            'reason' => $request->input('reason'),
+            'user_id' => $request->user()?->id,
+        ]);
+
         $product = Product::findOrFail($id);
 
         $data = $request->validate([
@@ -392,7 +401,12 @@ final class ProductController extends Controller
             'reason' => 'nullable|string',
         ]);
 
+        \Log::info('Guardando status en DB:', ['id' => $product->id, 'nuevo_status' => $data['status']]);
+
         $product->update(['status' => $data['status']]);
+
+        \Log::info('Status guardado exitosamente. Nuevo valor:', ['status' => $product->fresh()->status]);
+
         $product->load(['categories', 'mainAttributes', 'additionalAttributes']);
 
         broadcast(new ProductStatusChanged($product));

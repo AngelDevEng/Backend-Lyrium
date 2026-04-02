@@ -15,13 +15,10 @@ final class UserResource extends JsonResource
             'id' => $this->id,
             'username' => $this->username,
             'email' => $this->email,
-            'nicename' => $this->nicename ?? $this->username,
             'display_name' => $this->name,
             'role' => $this->frontend_role,
-            'avatar' => $this->avatar,
-            'phone' => $this->phone,
-            'document_type' => $this->document_type,
-            'document_number' => $this->document_number,
+            'avatar' => $this->profile?->avatar,
+            'phone' => $this->profile?->phone,
         ];
     }
 }

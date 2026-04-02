@@ -20,7 +20,7 @@ final class ReviewResource extends JsonResource
             'user' => $this->whenLoaded('user', fn () => [
                 'id' => (string) $this->user->id,
                 'name' => $this->user->name,
-                'avatar' => $this->user->avatar,
+                'avatar' => $this->user->profile?->avatar,
             ]),
             'product' => $this->whenLoaded('product', fn () => [
                 'id' => (string) $this->product->id,

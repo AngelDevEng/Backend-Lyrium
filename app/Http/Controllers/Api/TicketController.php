@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\TicketInboxUpdated;
 use App\Events\TicketMessageReceived;
 use App\Events\TicketMessagesRead;
-use App\Events\TicketInboxUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SendTicketMessageRequest;
 use App\Http\Requests\StoreTicketRequest;
@@ -132,7 +132,7 @@ final class TicketController extends Controller
         $previewText = $request->filled('mensaje')
             ? Str::limit($request->input('mensaje'), 100)
             : $this->buildImagePreview($request->file('adjuntos') ?? []);
-        $updatedAt   = now()->toIso8601String();
+        $updatedAt = now()->toIso8601String();
         foreach ($admins as $admin) {
             broadcast(new TicketInboxUpdated(
                 $admin->id,
@@ -235,9 +235,9 @@ final class TicketController extends Controller
             'type' => 'system',
         ]);
 
-        $previewText   = 'El vendedor cerró este ticket.';
+        $previewText = 'El vendedor cerró este ticket.';
         $totalMessages = $ticket->messages()->count();
-        $updatedAt     = now()->toIso8601String();
+        $updatedAt = now()->toIso8601String();
 
         User::role('administrator')->each(function (User $admin) use ($ticket, $previewText, $totalMessages, $updatedAt): void {
             broadcast(new TicketInboxUpdated(
@@ -269,11 +269,11 @@ final class TicketController extends Controller
         }
 
         $messages = $query->limit(30)->get();
-        $hasMore  = $messages->count() === 30;
+        $hasMore = $messages->count() === 30;
 
         return response()->json([
-            'success'  => true,
-            'data'     => \App\Http\Resources\TicketMessageResource::collection($messages->reverse()->values()),
+            'success' => true,
+            'data' => \App\Http\Resources\TicketMessageResource::collection($messages->reverse()->values()),
             'has_more' => $hasMore,
         ]);
     }
@@ -285,7 +285,7 @@ final class TicketController extends Controller
         return match (true) {
             $count === 0 => '',
             $count === 1 => '[Imagen]',
-            default      => "[{$count} imágenes]",
+            default => "[{$count} imágenes]",
         };
     }
 

@@ -49,8 +49,8 @@ final class StoreTest extends TestCase
     public function test_admin_can_search_stores(): void
     {
         $admin = $this->createAdmin();
-        Store::factory()->create(['trade_name' => 'BioTienda Especial']);
-        Store::factory()->create(['trade_name' => 'Otra Tienda']);
+        Store::factory()->create(['trade_name_deprecated' => 'BioTienda Especial']);
+        Store::factory()->create(['trade_name_deprecated' => 'Otra Tienda']);
 
         $response = $this->actingAs($admin)
             ->getJson('/api/stores?search=BioTienda');
@@ -131,7 +131,7 @@ final class StoreTest extends TestCase
         $response->assertOk();
         $this->assertDatabaseHas('stores', [
             'id' => $store->id,
-            'trade_name' => 'Updated Name',
+            'trade_name_deprecated' => 'Updated Name',
         ]);
     }
 

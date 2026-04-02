@@ -68,9 +68,9 @@ final class CategoryController extends Controller
         $categories = Category::whereNull('parent_id')
             ->with(['children' => function ($q) {
                 $q->orderBy('sort_order')
-                  ->with(['children' => function ($q2) {
-                      $q2->orderBy('sort_order');
-                  }]);
+                    ->with(['children' => function ($q2) {
+                        $q2->orderBy('sort_order');
+                    }]);
             }])
             ->orderBy('type')->orderBy('sort_order')
             ->get();
@@ -79,6 +79,7 @@ final class CategoryController extends Controller
             'success' => true,
             'data' => $categories->map(function ($cat) {
                 $prefix = $cat->type === 'service' ? '/servicios' : '/productos';
+
                 return [
                     'id' => $cat->id,
                     'name' => $cat->name,
@@ -91,13 +92,13 @@ final class CategoryController extends Controller
                             'name' => $sub->name,
                             'slug' => $sub->slug,
                             'image' => $sub->image ? asset($sub->image) : null,
-                            'href' => $prefix . '/' . $cat->slug . '/' . $sub->slug,
+                            'href' => $prefix.'/'.$cat->slug.'/'.$sub->slug,
                             'children' => $sub->children->map(function ($subsub) use ($cat, $prefix) {
                                 return [
                                     'id' => $subsub->id,
                                     'name' => $subsub->name,
                                     'slug' => $subsub->slug,
-                                    'href' => $prefix . '/' . $cat->slug . '/' . $subsub->slug,
+                                    'href' => $prefix.'/'.$cat->slug.'/'.$subsub->slug,
                                 ];
                             }),
                         ];
@@ -218,7 +219,7 @@ final class CategoryController extends Controller
         ]);
 
         $path = $request->file('image')->store('img/categorias', 'public');
-        $relativePath = '/storage/' . $path;
+        $relativePath = '/storage/'.$path;
 
         $category->update(['image' => $relativePath]);
 

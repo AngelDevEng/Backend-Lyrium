@@ -28,7 +28,7 @@ final class ProductResource extends JsonResource
                 'medium' => $media->getUrl('medium'),
                 'large' => $media->getUrl('large'),
                 'alt' => $this->name,
-            ])->values()->all(),
+            ])->values()->all() ?: ($this->image ? [['src' => $this->image, 'alt' => $this->name]] : []),
             'categories' => $this->whenLoaded('categories', fn () => $this->categories->map(fn ($cat) => [
                 'name' => $cat->name,
                 'slug' => $cat->slug,

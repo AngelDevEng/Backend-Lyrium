@@ -22,6 +22,7 @@ Broadcast::channel('ticket.{ticketId}', function (User $user, int $ticketId) {
     if (! $ticket) {
         return false;
     }
+
     return $user->id === $ticket->user_id
         || $user->hasRole('administrator');
 });

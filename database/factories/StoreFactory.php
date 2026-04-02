@@ -23,7 +23,7 @@ final class StoreFactory extends Factory
         return [
             'owner_id' => User::factory(),
             'ruc' => fake()->numerify('###########'),
-            'trade_name' => $name,
+            'trade_name_deprecated' => $name,
             'corporate_email' => fake()->unique()->companyEmail(),
             'slug' => Str::slug($name).'-'.Str::random(5),
             'description' => fake()->sentence(),

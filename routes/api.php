@@ -4,6 +4,7 @@
 use App\Http\Controllers\Api\AdminTicketController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BenefitController;
+use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ContractController;
@@ -108,6 +109,21 @@ Route::post('/newsletter', [NewsletterController::class, 'subscribe']);
 
 /*
 |--------------------------------------------------------------------------
+| Blog (público)
+|--------------------------------------------------------------------------
+*/
+Route::get('/blog/categories', [BlogController::class, 'categories']);
+Route::get('/blog/posts', [BlogController::class, 'posts']);
+Route::get('/blog/posts/recent', [BlogController::class, 'recent']);
+Route::get('/blog/posts/featured', [BlogController::class, 'featured']);
+Route::get('/blog/posts/{slug}', [BlogController::class, 'show']);
+Route::get('/blog/comments', [BlogController::class, 'comments']);
+Route::post('/blog/comments', [BlogController::class, 'storeComment']);
+Route::get('/blog/podcasts', [BlogController::class, 'podcasts']);
+Route::get('/blog/videos', [BlogController::class, 'videos']);
+
+/*
+|--------------------------------------------------------------------------
 | Autenticado (cualquier rol)
 |--------------------------------------------------------------------------
 */
@@ -126,6 +142,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/stores/me/media/banner', [StoreController::class, 'uploadBanner']);
     Route::post('/stores/me/media/gallery', [StoreController::class, 'uploadGallery']);
     Route::delete('/stores/me/media/gallery/{index}', [StoreController::class, 'deleteGalleryImage']);
+
+    // Badges
+    Route::get('/stores/me/badges', [StoreController::class, 'getStoreBadges']);
+    Route::post('/stores/me/insignia/request', [StoreController::class, 'requestInsignia']);
 
     // Profile Requests - Seller
     Route::get('/stores/me/profile-request', [ProfileRequestController::class, 'me']);
@@ -327,6 +347,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Store gallery
         Route::post('/stores/{id}/media/gallery', [MediaController::class, 'uploadStoreGallery']);
         Route::delete('/stores/{id}/media/gallery/{mediaId}', [MediaController::class, 'deleteStoreGallery']);
+
+        // Badges e Insignia
+        Route::get('/stores/{id}/badges', [StoreController::class, 'getStoreBadges']);
+        Route::put('/stores/{id}/insignia/approve', [StoreController::class, 'manageInsignia']);
 
         // Products CRUD
         Route::post('/products', [ProductController::class, 'store']);

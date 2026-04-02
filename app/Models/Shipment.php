@@ -31,6 +31,7 @@ final class Shipment extends Model
         'order_item_id',
         'store_id',
         'shipping_method_id',
+        'delivery_partner_id',
         'tracking_number',
         'tracking_url',
         'carrier',
@@ -70,6 +71,11 @@ final class Shipment extends Model
     public function shippingMethod(): BelongsTo
     {
         return $this->belongsTo(ShippingMethod::class);
+    }
+
+    public function deliveryPartner(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryPartner::class);
     }
 
     public function isPending(): bool

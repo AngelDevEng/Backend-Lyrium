@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -21,11 +22,6 @@ class User extends Authenticatable
         'name',
         'username',
         'email',
-        'nicename',
-        'avatar',
-        'phone',
-        'document_type',
-        'document_number',
         'password',
         'email_verified_at',
         'google_id',
@@ -42,6 +38,19 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    // Obtener user_type basado en roles de Spatie
+    public function getUserTypeAttribute(): string
+    {
+        $role = $this->getRoleNames()->first();
+
+        return match ($role) {
+            'administrator' => 'admin',
+            'seller' => 'seller',
+            'logistics_operator' => 'delivery',
+            default => 'customer',
+        };
     }
 
     // Tiendas que este usuario posee
@@ -85,5 +94,20 @@ class User extends Authenticatable
     public function couponUsages(): HasMany
     {
         return $this->hasMany(CouponUsage::class);
+    }
+
+    public function profile(): HasMany
+    {
+        return $this->hasMany(UserProfile::class);
+    }
+
+    public function userProfile(): HasOne
+    {
+        return $this->hasOne(UserProfile::class);
+    }
+
+    public function getProfileAttribute(): ?UserProfile
+    {
+        return $this->userProfile;
     }
 }

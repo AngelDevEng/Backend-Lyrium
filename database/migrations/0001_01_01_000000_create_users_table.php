@@ -13,14 +13,9 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // display_name
+            $table->string('name');
             $table->string('username')->unique();
             $table->string('email')->unique();
-            $table->string('nicename')->nullable(); // slug del nombre
-            $table->string('avatar')->nullable();
-            $table->string('phone', 20)->nullable();
-            $table->string('document_type', 10)->nullable()->default('DNI'); // DNI, CE, RUC, PAS
-            $table->string('document_number', 20)->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

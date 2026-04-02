@@ -67,8 +67,11 @@ final class SocialAuthService
             ->first();
 
         if ($user) {
-            if ($user->avatar !== $socialUser->getAvatar()) {
-                $user->update(['avatar' => $socialUser->getAvatar()]);
+            if ($socialUser->getAvatar() && ! $user->profile?->avatar) {
+                $user->profile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    ['avatar' => $socialUser->getAvatar()]
+                );
             }
 
             return ['user' => $user, 'is_new_user' => false];
@@ -80,8 +83,14 @@ final class SocialAuthService
             $user->update([
                 'provider' => $provider,
                 'provider_id' => $socialUser->getId(),
-                'avatar' => $user->avatar ?? $socialUser->getAvatar(),
             ]);
+
+            if ($socialUser->getAvatar() && ! $user->profile?->avatar) {
+                $user->profile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    ['avatar' => $socialUser->getAvatar()]
+                );
+            }
 
             return ['user' => $user, 'is_new_user' => false];
         }
@@ -94,15 +103,20 @@ final class SocialAuthService
             'name' => $socialUser->getName() ?? 'Usuario',
             'username' => $username,
             'email' => $socialUser->getEmail(),
-            'nicename' => Str::slug($socialUser->getName() ?? $username),
             'provider' => $provider,
             'provider_id' => $socialUser->getId(),
-            'avatar' => $socialUser->getAvatar(),
             'email_verified_at' => now(),
             'password' => null,
         ]);
 
         $user->assignRole('customer');
+
+        if ($socialUser->getAvatar()) {
+            $user->profile()->create([
+                'profile_type' => 'customer',
+                'avatar' => $socialUser->getAvatar(),
+            ]);
+        }
 
         return ['user' => $user, 'is_new_user' => true];
     }
