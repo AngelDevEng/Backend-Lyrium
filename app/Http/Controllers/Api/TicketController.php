@@ -82,20 +82,24 @@ final class TicketController extends Controller
 
     public function store(StoreTicketRequest $request): JsonResponse
     {
-        $user = $request->user();
-        $store = $user->store;
+        $user  = $request->user();
+        $store = null;
 
-        if (! $store) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Debes tener una tienda registrada para crear tickets.',
-            ], 403);
+        if ($user->hasRole('seller')) {
+            $store = $user->store;
+
+            if (! $store) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debes tener una tienda registrada para crear tickets.',
+                ], 403);
+            }
         }
 
         $priorityMap = [
-            'baja' => 'low',
-            'media' => 'medium',
-            'alta' => 'high',
+            'baja'   => 'low',
+            'media'  => 'medium',
+            'alta'   => 'high',
             'critica' => 'critical',
         ];
 
@@ -103,13 +107,13 @@ final class TicketController extends Controller
 
         $ticket = Ticket::create([
             'ticket_number' => Ticket::generateTicketNumber(),
-            'user_id' => $user->id,
-            'store_id' => $store->id,
-            'subject' => $request->input('asunto'),
-            'description' => $request->input('mensaje'),
-            'category' => $request->input('tipo_ticket'),
-            'priority' => $priorityMap[$criticidad] ?? 'medium',
-            'is_critical' => in_array($criticidad, ['alta', 'critica']),
+            'user_id'       => $user->id,
+            'store_id'      => $store?->id,
+            'subject'       => $request->input('asunto'),
+            'description'   => $request->input('mensaje'),
+            'category'      => $request->input('tipo_ticket'),
+            'priority'      => $priorityMap[$criticidad] ?? 'medium',
+            'is_critical'   => in_array($criticidad, ['alta', 'critica']),
         ]);
 
         $initialMessage = $ticket->messages()->create([
@@ -231,11 +235,11 @@ final class TicketController extends Controller
 
         $ticket->messages()->create([
             'user_id' => $request->user()->id,
-            'content' => 'El vendedor cerró este ticket.',
+            'content' => 'El usuario cerró este ticket.',
             'type' => 'system',
         ]);
 
-        $previewText   = 'El vendedor cerró este ticket.';
+        $previewText   = 'El usuario cerró este ticket.';
         $totalMessages = $ticket->messages()->count();
         $updatedAt     = now()->toIso8601String();
 

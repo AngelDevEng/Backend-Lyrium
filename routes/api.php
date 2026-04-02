@@ -135,6 +135,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/plans/requests', [PlanRequestController::class, 'store']);
     Route::get('/stores/me/plan-request', [PlanRequestController::class, 'me']);
 
+    // Tickets — Mesa de Ayuda (customer, seller, cualquier usuario autenticado)
+    Route::prefix('tickets')->group(function () {
+        Route::get('/', [TicketController::class, 'index']);
+        Route::post('/', [TicketController::class, 'store']);
+        Route::get('/{id}', [TicketController::class, 'show']);
+        Route::get('/{id}/messages', [TicketController::class, 'getMessages']);
+        Route::post('/{id}/messages', [TicketController::class, 'sendMessage']);
+        Route::put('/{id}/close', [TicketController::class, 'close']);
+        Route::post('/{id}/survey', [TicketController::class, 'submitSurvey']);
+    });
+
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/{id}', [NotificationController::class, 'show']);
@@ -382,15 +393,5 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/payments/completed', [PaymentController::class, 'sellerCompletedPayments']);
         Route::get('/payments/pending-total', [PaymentController::class, 'sellerPendingTotal']);
 
-        // Tickets — Vendedor (Mesa de Ayuda)
-        Route::prefix('tickets')->group(function () {
-            Route::get('/', [TicketController::class, 'index']);
-            Route::post('/', [TicketController::class, 'store']);
-            Route::get('/{id}', [TicketController::class, 'show']);
-            Route::get('/{id}/messages', [TicketController::class, 'getMessages']);
-            Route::post('/{id}/messages', [TicketController::class, 'sendMessage']);
-            Route::put('/{id}/close', [TicketController::class, 'close']);
-            Route::post('/{id}/survey', [TicketController::class, 'submitSurvey']);
-        });
     });
 });

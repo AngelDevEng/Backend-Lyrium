@@ -16,14 +16,29 @@ Broadcast::channel('user.{userId}', function (User $user, int $userId) {
     return $user->id === $userId;
 });
 
-// Canal privado por ticket (mensajes en tiempo real — seller + admin)
+// Canal privado por ticket (mensajes en tiempo real — customer + seller + admin)
 Broadcast::channel('ticket.{ticketId}', function (User $user, int $ticketId) {
     $ticket = \App\Models\Ticket::find($ticketId);
     if (! $ticket) {
         return false;
     }
-    return $user->id === $ticket->user_id
-        || $user->hasRole('administrator');
+
+    // Creador del ticket (customer)
+    if ($user->id === $ticket->user_id) {
+        return true;
+    }
+
+    // Admin
+    if ($user->hasRole('administrator')) {
+        return true;
+    }
+
+    // Seller dueño de la tienda asociada al ticket
+    if ($ticket->store_id && $user->stores()->where('stores.id', $ticket->store_id)->exists()) {
+        return true;
+    }
+
+    return false;
 });
 
 // Canal privado por tienda (órdenes, bookings, estado de plan, productos)
