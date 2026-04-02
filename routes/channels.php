@@ -3,8 +3,8 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Broadcast;
 
-// Registrar rutas de broadcasting con guard Sanctum (tokens de API)
-Broadcast::routes(['middleware' => ['auth:sanctum']]);
+// Registrar rutas de broadcasting con middleware API + Sanctum (sin CSRF)
+Broadcast::routes(['middleware' => ['api', 'auth:sanctum']]);
 
 // Canal por defecto de Laravel (notificaciones del modelo User)
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
