@@ -69,8 +69,10 @@ final class StoreController extends Controller
         $stores = $query->orderBy('created_at', 'desc')
             ->paginate($request->query('per_page', 50));
 
+        // Serializar la colección explícitamente para evitar el doble-wrapping que
+        // produce json_encode sobre un AnonymousResourceCollection paginado.
         return response()->json([
-            'data' => StoreResource::collection($stores),
+            'data' => StoreResource::collection($stores)->resolve(),
             'pagination' => [
                 'page' => $stores->currentPage(),
                 'perPage' => $stores->perPage(),
