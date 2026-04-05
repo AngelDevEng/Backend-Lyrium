@@ -26,6 +26,7 @@ class User extends Authenticatable
         'phone',
         'document_type',
         'document_number',
+        'is_banned',
         'password',
         'email_verified_at',
         'google_id',
@@ -40,6 +41,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'is_banned' => 'boolean',
             'password' => 'hashed',
         ];
     }

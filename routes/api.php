@@ -131,6 +131,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stores/me/profile-request', [ProfileRequestController::class, 'me']);
     Route::post('/stores/me/profile-request', [ProfileRequestController::class, 'store']);
 
+    // Contratos - Vendedor (ver, descargar y subir firmado)
+    Route::get('/contracts/me', [ContractController::class, 'myContract']);
+    Route::get('/contracts/me/download', [ContractController::class, 'downloadMyContract']);
+    Route::post('/contracts/me/upload-signed', [ContractController::class, 'uploadSigned']);
+
     // Plan Requests - Seller
     Route::post('/plans/requests', [PlanRequestController::class, 'store']);
     Route::get('/stores/me/plan-request', [PlanRequestController::class, 'me']);
@@ -220,6 +225,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Users management
         Route::get('/users', [UserController::class, 'index']);
         Route::get('/users/role/{role}', [UserController::class, 'byRole']);
+        Route::post('/users/internal', [UserController::class, 'createInternal']);
+        Route::put('/users/{id}/role', [UserController::class, 'assignRole']);
+        Route::put('/users/{id}/ban', [UserController::class, 'toggleBan']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
         // Stores management
@@ -320,7 +328,7 @@ Route::middleware('auth:sanctum')->group(function () {
     |----------------------------------------------------------------------
     */
     Route::middleware('role:seller,administrator')->group(function () {
-        // Store propio
+        // Store propio (sin requerir contrato — el vendedor necesita ver/editar su tienda antes de firmar)
         Route::post('/stores', [StoreController::class, 'store']);
         Route::put('/stores/{id}', [StoreController::class, 'update']);
         Route::get('/stores/{id}/branches', [StoreController::class, 'branches']);
@@ -339,23 +347,26 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/stores/{id}/media/gallery', [MediaController::class, 'uploadStoreGallery']);
         Route::delete('/stores/{id}/media/gallery/{mediaId}', [MediaController::class, 'deleteStoreGallery']);
 
-        // Products CRUD
-        Route::post('/products', [ProductController::class, 'store']);
-        Route::put('/products/{id}', [ProductController::class, 'update']);
-        Route::delete('/products/{id}', [ProductController::class, 'destroy']);
-        Route::put('/products/{id}/stock', [ProductController::class, 'updateStock']);
+        // Rutas que requieren contrato activo para operar
+        Route::middleware('contract.active')->group(function () {
+            // Products CRUD
+            Route::post('/products', [ProductController::class, 'store']);
+            Route::put('/products/{id}', [ProductController::class, 'update']);
+            Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+            Route::put('/products/{id}/stock', [ProductController::class, 'updateStock']);
 
-        // Products Media (upload image)
-        Route::post('/products/{id}/media', [MediaController::class, 'uploadProductMedia']);
+            // Products Media (upload image)
+            Route::post('/products/{id}/media', [MediaController::class, 'uploadProductMedia']);
 
-        // Services (vendedor)
-        Route::post('/services', [ServiceController::class, 'store']);
-        Route::put('/services/{id}', [ServiceController::class, 'update']);
-        Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
-        Route::get('/bookings/seller', [ServiceController::class, 'sellerBookings']);
-        Route::put('/bookings/{id}/confirm', [ServiceController::class, 'confirmBooking']);
-        Route::put('/bookings/{id}/no-show', [ServiceController::class, 'markNoShow']);
-        Route::put('/bookings/{id}/notes', [ServiceController::class, 'addNotes']);
+            // Services (vendedor)
+            Route::post('/services', [ServiceController::class, 'store']);
+            Route::put('/services/{id}', [ServiceController::class, 'update']);
+            Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
+            Route::get('/bookings/seller', [ServiceController::class, 'sellerBookings']);
+            Route::put('/bookings/{id}/confirm', [ServiceController::class, 'confirmBooking']);
+            Route::put('/bookings/{id}/no-show', [ServiceController::class, 'markNoShow']);
+            Route::put('/bookings/{id}/notes', [ServiceController::class, 'addNotes']);
+        });
 
         // Shipping (vendedor)
         Route::get('/store/shipping/methods', [ShippingController::class, 'storeMethods']);

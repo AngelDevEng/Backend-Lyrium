@@ -8,8 +8,10 @@ use App\Events\StoreStatusChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUpdateRequest;
 use App\Http\Resources\StoreResource;
+use App\Models\Contract;
 use App\Models\Store;
 use App\Notifications\StoreStatusNotification;
+use App\Services\ContractDocumentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -45,7 +47,7 @@ final class StoreController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Store::with(['owner', 'category']);
+        $query = Store::with(['owner', 'category', 'contracts' => fn ($q) => $q->latest()]);
 
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
@@ -165,6 +167,11 @@ final class StoreController extends Controller
         }
 
         $store->update($updateData);
+
+        // Generar contrato automáticamente al aprobar
+        if ($data['status'] === 'approved') {
+            $this->generateContractForStore($store->fresh());
+        }
 
         // Enviar notificación al propietario de la tienda
         $store->owner->notify(new StoreStatusNotification(
@@ -370,6 +377,41 @@ final class StoreController extends Controller
             'gallery' => $store->fresh()->gallery,
             'message' => count($urls).' imágenes agregadas a la galería',
         ]);
+    }
+
+    /**
+     * Genera y persiste el contrato digital al aprobar una tienda.
+     */
+    private function generateContractForStore(Store $store): void
+    {
+        // Evitar duplicados: solo generar si no existe ya un contrato para esta tienda
+        if ($store->contracts()->exists()) {
+            return;
+        }
+
+        $contractNumber = ContractDocumentService::generateContractNumber();
+
+        $service  = new ContractDocumentService();
+        $filePath = $service->generate($store, $contractNumber);
+
+        $contract = Contract::create([
+            'contract_number' => $contractNumber,
+            'store_id'        => $store->id,
+            'company'         => $store->razon_social ?? $store->trade_name,
+            'ruc'             => $store->ruc,
+            'representative'  => $store->rep_legal_nombre,
+            'type'            => 'Convenio Digital',
+            'modality'        => 'Digital',
+            'status'          => 'PENDING',
+            'start_date'      => now()->toDateString(),
+            'end_date'        => null,
+            'file_path'       => $filePath,
+        ]);
+
+        $contract->addAuditEntry(
+            'Contrato generado automáticamente por aprobación de tienda',
+            'Sistema'
+        );
     }
 
     /**

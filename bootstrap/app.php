@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\EnsureRole::class,
             'store.approved' => \App\Http\Middleware\EnsureStoreApproved::class,
             'verified' => \App\Http\Middleware\EnsureEmailVerified::class,
+            'contract.active' => \App\Http\Middleware\EnsureContractActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

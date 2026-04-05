@@ -63,6 +63,7 @@ final class Store extends Model implements HasMedia
         'profile_updated_at',
         'approved_at',
         'banned_at',
+        'sla_notified_at',
     ];
 
     protected function casts(): array
@@ -73,6 +74,7 @@ final class Store extends Model implements HasMedia
             'experience_years' => 'integer',
             'approved_at' => 'datetime',
             'banned_at' => 'datetime',
+            'sla_notified_at' => 'datetime',
             'gallery' => 'array',
             'bank_secondary' => 'array',
             'profile_status' => 'string',
@@ -125,6 +127,16 @@ final class Store extends Model implements HasMedia
     public function suppliers(): BelongsToMany
     {
         return $this->belongsToMany(Supplier::class, 'supplier_store')->withTimestamps();
+    }
+
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(Contract::class);
+    }
+
+    public function activeContract(): HasOne
+    {
+        return $this->hasOne(Contract::class)->where('status', 'ACTIVE')->latestOfMany();
     }
 
     public function isApproved(): bool

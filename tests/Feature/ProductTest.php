@@ -149,7 +149,7 @@ final class ProductTest extends TestCase
 
     public function test_seller_can_create_physical_product(): void
     {
-        $seller = $this->createSeller();
+        $seller = $this->createSellerWithContract();
 
         $response = $this->actingAs($seller)
             ->postJson('/api/products', [
@@ -170,7 +170,7 @@ final class ProductTest extends TestCase
 
     public function test_seller_can_create_digital_product(): void
     {
-        $seller = $this->createSeller();
+        $seller = $this->createSellerWithContract();
 
         $response = $this->actingAs($seller)
             ->postJson('/api/products', [
@@ -190,7 +190,7 @@ final class ProductTest extends TestCase
 
     public function test_seller_can_create_service_product(): void
     {
-        $seller = $this->createSeller();
+        $seller = $this->createSellerWithContract();
 
         $response = $this->actingAs($seller)
             ->postJson('/api/products', [
@@ -209,7 +209,7 @@ final class ProductTest extends TestCase
 
     public function test_digital_product_requires_download_url(): void
     {
-        $seller = $this->createSeller();
+        $seller = $this->createSellerWithContract();
 
         $response = $this->actingAs($seller)
             ->postJson('/api/products', [
@@ -224,7 +224,7 @@ final class ProductTest extends TestCase
 
     public function test_service_product_requires_duration_and_modality(): void
     {
-        $seller = $this->createSeller();
+        $seller = $this->createSellerWithContract();
 
         $response = $this->actingAs($seller)
             ->postJson('/api/products', [
@@ -253,7 +253,7 @@ final class ProductTest extends TestCase
 
     public function test_create_product_with_category_and_attributes(): void
     {
-        $seller = $this->createSeller();
+        $seller = $this->createSellerWithContract();
         Category::factory()->create(['slug' => 'semillas']);
 
         $response = $this->actingAs($seller)
@@ -283,7 +283,7 @@ final class ProductTest extends TestCase
 
     public function test_seller_can_update_product(): void
     {
-        $seller = $this->createSeller();
+        $seller = $this->createSellerWithContract();
         $store = $seller->ownedStores()->first();
         $product = Product::factory()->create(['store_id' => $store->id]);
 
@@ -301,7 +301,7 @@ final class ProductTest extends TestCase
 
     public function test_seller_can_delete_product(): void
     {
-        $seller = $this->createSeller();
+        $seller = $this->createSellerWithContract();
         $store = $seller->ownedStores()->first();
         $product = Product::factory()->create(['store_id' => $store->id]);
 
@@ -318,7 +318,7 @@ final class ProductTest extends TestCase
 
     public function test_seller_can_update_stock(): void
     {
-        $seller = $this->createSeller();
+        $seller = $this->createSellerWithContract();
         $store = $seller->ownedStores()->first();
         $product = Product::factory()->create([
             'store_id' => $store->id,
@@ -336,7 +336,7 @@ final class ProductTest extends TestCase
 
     public function test_update_stock_requires_non_negative(): void
     {
-        $seller = $this->createSeller();
+        $seller = $this->createSellerWithContract();
         $store = $seller->ownedStores()->first();
         $product = Product::factory()->create(['store_id' => $store->id]);
 

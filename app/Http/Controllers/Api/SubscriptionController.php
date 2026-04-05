@@ -57,6 +57,16 @@ final class SubscriptionController extends Controller
             'status' => 'active',
         ]);
 
+        // Vincular end_date del contrato activo con la suscripción
+        $activeContract = $store->contracts()->whereIn('status', ['ACTIVE', 'PENDING'])->latest()->first();
+        if ($activeContract) {
+            $activeContract->update(['end_date' => $subscription->ends_at->toDateString()]);
+            $activeContract->addAuditEntry(
+                "Vigencia del contrato actualizada por suscripción al plan {$plan->name}",
+                'Sistema'
+            );
+        }
+
         return (new SubscriptionResource($subscription->load('plan')))
             ->response()
             ->setStatusCode(201);
@@ -129,6 +139,16 @@ final class SubscriptionController extends Controller
             'ends_at' => now()->addMonth(),
             'status' => 'active',
         ]);
+
+        // Vincular end_date del contrato con la renovación
+        $activeContract = $store->contracts()->whereIn('status', ['ACTIVE', 'PENDING'])->latest()->first();
+        if ($activeContract) {
+            $activeContract->update(['end_date' => $subscription->fresh()->ends_at->toDateString()]);
+            $activeContract->addAuditEntry(
+                "Vigencia del contrato renovada por suscripción al plan {$plan->name}",
+                'Sistema'
+            );
+        }
 
         return response()->json([
             'message' => 'Suscripción renovada correctamente',

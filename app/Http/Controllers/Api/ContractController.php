@@ -9,6 +9,7 @@ use App\Http\Requests\StoreContractRequest;
 use App\Http\Requests\UpdateContractRequest;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
+use App\Models\Store;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -257,5 +258,98 @@ final class ContractController extends Controller
         $contract->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * GET /api/contracts/me
+     * Vendedor: ver su contrato pendiente de firma
+     */
+    public function myContract(Request $request): JsonResponse
+    {
+        $store = Store::where('owner_id', $request->user()->id)->first();
+
+        if (! $store) {
+            return response()->json(['message' => 'No tienes una tienda registrada'], 404);
+        }
+
+        $contract = $store->contracts()->latest()->first();
+
+        if (! $contract) {
+            return response()->json(['message' => 'No tienes un contrato generado aún'], 404);
+        }
+
+        return response()->json(new ContractResource($contract->load('auditTrails')));
+    }
+
+    /**
+     * GET /api/contracts/me/download
+     * Vendedor: descargar el documento Word de su contrato para firmarlo
+     */
+    public function downloadMyContract(Request $request)
+    {
+        $store = Store::where('owner_id', $request->user()->id)->first();
+
+        if (! $store) {
+            return response()->json(['message' => 'No tienes una tienda registrada'], 404);
+        }
+
+        $contract = $store->contracts()->whereIn('status', ['PENDING'])->latest()->first();
+
+        if (! $contract || ! $contract->file_path) {
+            return response()->json(['message' => 'No hay documento disponible para descargar'], 404);
+        }
+
+        if (! Storage::disk('local')->exists($contract->file_path)) {
+            return response()->json(['message' => 'El archivo no se encontró en el servidor'], 404);
+        }
+
+        return Storage::disk('local')->download(
+            $contract->file_path,
+            "convenio_{$contract->contract_number}.docx"
+        );
+    }
+
+    /**
+     * POST /api/contracts/me/upload-signed
+     * Vendedor: subir el contrato firmado digitalmente
+     */
+    public function uploadSigned(Request $request): JsonResponse
+    {
+        $store = Store::where('owner_id', $request->user()->id)->first();
+
+        if (! $store) {
+            return response()->json(['message' => 'No tienes una tienda registrada'], 404);
+        }
+
+        $contract = $store->contracts()->where('status', 'PENDING')->latest()->first();
+
+        if (! $contract) {
+            return response()->json(['message' => 'No tienes un contrato pendiente de firma'], 422);
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:pdf,doc,docx|max:10240',
+        ]);
+
+        $file        = $request->file('file');
+        $companySlug = preg_replace('/[^a-zA-Z0-9_]/', '_', $contract->company ?? 'empresa');
+        $year        = now()->year;
+        $path        = $file->storeAs(
+            "private/contracts/{$companySlug}/{$year}/signed",
+            "firmado_{$contract->contract_number}." . $file->getClientOriginalExtension(),
+            'local'
+        );
+
+        $contract->update(['file_path' => $path]);
+
+        $contract->addAuditEntry(
+            'Documento firmado subido por el vendedor — pendiente de verificación por admin',
+            $request->user()->name ?? 'Vendedor'
+        );
+
+        return response()->json([
+            'message'  => 'Documento firmado recibido correctamente. El equipo de Lyrium lo verificará pronto.',
+            'contract' => new ContractResource($contract->fresh()->load('auditTrails')),
+        ]);
     }
 }

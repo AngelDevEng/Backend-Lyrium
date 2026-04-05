@@ -71,6 +71,10 @@ final class StoreResource extends JsonResource
             'totalSales' => (int) $this->total_sales,
             'totalOrders' => (int) $this->total_sales,
             'rating' => (float) $this->rating,
+            'contractStatus' => $this->whenLoaded('contracts', function () {
+                $contract = $this->contracts->first();
+                return $contract ? $contract->status : null;
+            }),
             'registeredAt' => $this->created_at?->toIso8601String(),
             'verifiedAt' => $this->approved_at?->toIso8601String(),
             'owner' => new UserResource($this->whenLoaded('owner')),

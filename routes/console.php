@@ -12,3 +12,6 @@ Artisan::command('inspire', function () {
 Schedule::call(function () {
     \App\Models\EmailVerificationCode::where('expires_at', '<', now())->delete();
 })->hourly()->name('cleanup-expired-otp');
+
+// Verificar tiendas pendientes con SLA > 72 horas y notificar a admins
+Schedule::command('stores:check-sla')->everySixHours()->name('check-pending-stores-sla');
