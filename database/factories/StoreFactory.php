@@ -35,9 +35,19 @@ final class StoreFactory extends Factory
 
     public function approved(): static
     {
-        return $this->state(fn () => [
+        return $this->withCompleteProfile()->state(fn () => [
             'status' => 'approved',
             'approved_at' => now(),
+        ]);
+    }
+
+    public function withCompleteProfile(): static
+    {
+        return $this->state(fn () => [
+            'razon_social' => fake()->company().' S.A.C.',
+            'rep_legal_nombre' => fake()->name(),
+            'rep_legal_dni' => fake()->numerify('########'),
+            'direccion_fiscal' => fake()->address(),
         ]);
     }
 

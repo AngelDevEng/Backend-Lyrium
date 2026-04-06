@@ -283,7 +283,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/contracts/{id}/status', [ContractController::class, 'updateStatus']);
         Route::post('/contracts/{id}/upload', [ContractController::class, 'upload']);
         Route::get('/contracts/{id}/download', [ContractController::class, 'download']);
+        Route::get('/contracts/{id}/download-signed', [ContractController::class, 'downloadSigned']);
         Route::delete('/contracts/{id}', [ContractController::class, 'destroy']);
+
+        // Contract Template (admin gestiona el Word plantilla)
+        Route::get('/admin/contracts/template/info', [ContractController::class, 'templateInfo']);
+        Route::post('/admin/contracts/template', [ContractController::class, 'uploadTemplate']);
+        Route::get('/admin/contracts/template/download', [ContractController::class, 'downloadTemplate']);
 
         // Tickets — Admin (Mesa de Ayuda)
         Route::prefix('admin/tickets')->group(function () {

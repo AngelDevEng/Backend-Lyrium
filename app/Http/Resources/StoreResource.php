@@ -65,6 +65,8 @@ final class StoreResource extends JsonResource
                 'privacy' => $this->getPolicyUrl('privacy'),
             ],
             'status' => $this->status,
+            'profile_complete' => $this->isProfileComplete(),
+            'missing_profile_fields' => $this->missingProfileFields(),
             'sellerType' => $this->seller_type,
             'strikes' => $this->strikes,
             'commissionRate' => (float) $this->commission_rate,

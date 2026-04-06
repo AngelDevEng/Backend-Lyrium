@@ -375,6 +375,8 @@ final class PlanRequestController extends Controller
             'reviewed_by' => $reviewedBy,
         ]);
 
+        $endsAt = now()->addMonths($planRequest->months);
+
         Subscription::updateOrCreate(
             [
                 'store_id' => $planRequest->store_id,
@@ -383,7 +385,7 @@ final class PlanRequestController extends Controller
             [
                 'plan_id' => $planRequest->plan_id,
                 'starts_at' => now(),
-                'ends_at' => now()->addMonth(),
+                'ends_at' => $endsAt,
                 'status' => 'active',
             ]
         );
@@ -391,6 +393,20 @@ final class PlanRequestController extends Controller
         $planRequest->store->update([
             'commission_rate' => $planRequest->plan->commission_rate,
         ]);
+
+        // Actualizar end_date del contrato activo/pendiente con la vigencia de la suscripción
+        $contract = $planRequest->store->contracts()
+            ->whereIn('status', ['ACTIVE', 'PENDING'])
+            ->latest()
+            ->first();
+
+        if ($contract) {
+            $contract->update(['end_date' => $endsAt->toDateString()]);
+            $contract->addAuditEntry(
+                "Vigencia del contrato actualizada por activación del plan {$planRequest->plan->name}",
+                'Sistema'
+            );
+        }
     }
 
     private function getCurrentPlanInfo(Store $store): ?array

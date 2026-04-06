@@ -8,15 +8,60 @@ use App\Models\Contract;
 use App\Models\Store;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\SimpleType\Jc;
-use PhpOffice\PhpWord\Style\Font;
+use PhpOffice\PhpWord\TemplateProcessor;
 
 final class ContractDocumentService
 {
+    /** Path relativo al disco 'local' donde se guarda el template subido por el admin */
+    public const TEMPLATE_PATH = 'templates/convenio_template.docx';
+
     /**
      * Genera el documento Word del convenio y lo guarda en storage.
+     * Si existe un template subido por el admin, lo usa con TemplateProcessor.
+     * Si no, genera el documento por código (fallback).
      * Retorna el path relativo para guardar en Contract::file_path.
      */
     public function generate(Store $store, string $contractNumber): string
+    {
+        $store->load('subscription.plan');
+
+        $templateAbs = storage_path('app/private/' . self::TEMPLATE_PATH);
+
+        if (file_exists($templateAbs)) {
+            return $this->generateFromTemplate($store, $contractNumber, $templateAbs);
+        }
+
+        return $this->generateFromCode($store, $contractNumber);
+    }
+
+    /**
+     * Genera el documento rellenando el template Word con TemplateProcessor.
+     */
+    private function generateFromTemplate(Store $store, string $contractNumber, string $templatePath): string
+    {
+        $vars = $this->buildVars($store, $contractNumber);
+
+        $processor = new TemplateProcessor($templatePath);
+
+        foreach ($vars as $key => $value) {
+            $processor->setValue($key, htmlspecialchars($value));
+        }
+
+        [$absDir, $relDir, $filename] = $this->resolvePaths($store, $contractNumber);
+
+        if (! is_dir($absDir)) {
+            mkdir($absDir, 0755, true);
+        }
+
+        $processor->saveAs("{$absDir}/{$filename}");
+
+        return "{$relDir}/{$filename}";
+    }
+
+    /**
+     * Genera el documento por código (fallback cuando no hay template).
+     */
+    private function generateFromCode(Store $store, string $contractNumber): string
     {
         $store->load('subscription.plan');
 
@@ -208,23 +253,63 @@ final class ContractDocumentService
         $cellRight->addText($repNombre !== '—' ? $repNombre : 'Representante Legal', $boldStyle, ['alignment' => Jc::CENTER]);
         $cellRight->addText('EL VENDEDOR — RUC: ' . $ruc, $normalStyle, ['alignment' => Jc::CENTER]);
 
-        // ── Guardar ──────────────────────────────────────────────────────────
-        $companySlug = preg_replace('/[^a-zA-Z0-9_]/', '_', $company);
-        $year        = now()->year;
-        $dir         = storage_path("app/private/contracts/{$companySlug}/{$year}");
+        [$absDir, $relDir, $filename] = $this->resolvePaths($store, $contractNumber);
 
-        if (! is_dir($dir)) {
-            mkdir($dir, 0755, true);
+        if (! is_dir($absDir)) {
+            mkdir($absDir, 0755, true);
         }
 
-        $filename = "convenio_{$contractNumber}.docx";
-        $filepath = "{$dir}/{$filename}";
-
         $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
-        $writer->save($filepath);
+        $writer->save("{$absDir}/{$filename}");
 
-        // Retornar path relativo a storage/app
-        return "private/contracts/{$companySlug}/{$year}/{$filename}";
+        return "{$relDir}/{$filename}";
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Variables dinámicas disponibles para el template.
+     * Claves = nombre del placeholder en el Word (sin ${ }).
+     */
+    private function buildVars(Store $store, string $contractNumber): array
+    {
+        $store->loadMissing('subscription.plan');
+
+        $planName   = $store->subscription?->plan?->name ?? 'EMPRENDE';
+        $commission = $store->subscription?->plan?->commission_rate
+            ? number_format((float) $store->subscription->plan->commission_rate * 100, 0) . '%'
+            : '5%';
+
+        return [
+            'contract_number' => $contractNumber,
+            'company'         => $store->razon_social ?? $store->trade_name ?? 'Sin razón social',
+            'ruc'             => $store->ruc ?? '—',
+            'rep_nombre'      => $store->rep_legal_nombre ?? '—',
+            'rep_dni'         => $store->rep_legal_dni ?? '—',
+            'direccion'       => $store->direccion_fiscal ?? $store->address ?? '—',
+            'email'           => $store->corporate_email ?? '—',
+            'plan'            => $planName,
+            'commission'      => $commission,
+            'fecha_inicio'    => now()->format('d/m/Y'),
+            'ciudad'          => 'Lima',
+            'year'            => (string) now()->year,
+        ];
+    }
+
+    /**
+     * Resuelve directorios y nombre del archivo de salida.
+     * Retorna [absDir, relDir, filename].
+     */
+    private function resolvePaths(Store $store, string $contractNumber): array
+    {
+        $company     = $store->razon_social ?? $store->trade_name ?? 'empresa';
+        $companySlug = preg_replace('/[^a-zA-Z0-9_]/', '_', $company);
+        $year        = now()->year;
+        $relDir      = "contracts/{$companySlug}/{$year}";
+        $absDir      = storage_path("app/private/{$relDir}");
+        $filename    = "convenio_{$contractNumber}.docx";
+
+        return [$absDir, $relDir, $filename];
     }
 
     /**

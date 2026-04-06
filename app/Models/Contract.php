@@ -26,6 +26,7 @@ final class Contract extends Model
         'start_date',
         'end_date',
         'file_path',
+        'signed_file_path',
         'notes',
     ];
 

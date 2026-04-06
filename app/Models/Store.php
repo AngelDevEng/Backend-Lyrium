@@ -149,6 +149,37 @@ final class Store extends Model implements HasMedia
         return $this->status === 'banned';
     }
 
+    public function isProfileComplete(): bool
+    {
+        return filled($this->razon_social)
+            && filled($this->rep_legal_nombre)
+            && filled($this->rep_legal_dni)
+            && filled($this->direccion_fiscal);
+    }
+
+    public function missingProfileFields(): array
+    {
+        $missing = [];
+
+        if (! filled($this->razon_social)) {
+            $missing[] = 'Razon social';
+        }
+
+        if (! filled($this->rep_legal_nombre)) {
+            $missing[] = 'Nombre del representante legal';
+        }
+
+        if (! filled($this->rep_legal_dni)) {
+            $missing[] = 'DNI del representante legal';
+        }
+
+        if (! filled($this->direccion_fiscal)) {
+            $missing[] = 'Direccion fiscal';
+        }
+
+        return $missing;
+    }
+
     public function addStrike(): void
     {
         $this->increment('strikes');

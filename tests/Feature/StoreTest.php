@@ -80,7 +80,9 @@ final class StoreTest extends TestCase
             ->getJson("/api/stores/{$store->id}");
 
         $response->assertOk()
-            ->assertJsonPath('id', (string) $store->id);
+            ->assertJsonPath('id', (string) $store->id)
+            ->assertJsonPath('profile_complete', false)
+            ->assertJsonPath('missing_profile_fields.0', 'Razon social');
     }
 
     // ─── STORE (SELLER) ─────────────────────────────────────────────
@@ -140,7 +142,7 @@ final class StoreTest extends TestCase
     public function test_admin_can_approve_store(): void
     {
         $admin = $this->createAdmin();
-        $store = Store::factory()->create(['status' => 'pending']);
+        $store = Store::factory()->withCompleteProfile()->create(['status' => 'pending']);
 
         $response = $this->actingAs($admin)
             ->putJson("/api/stores/{$store->id}/status", [
@@ -151,6 +153,34 @@ final class StoreTest extends TestCase
         $store->refresh();
         $this->assertEquals('approved', $store->status);
         $this->assertNotNull($store->approved_at);
+    }
+
+    public function test_admin_cannot_approve_store_with_incomplete_profile(): void
+    {
+        $admin = $this->createAdmin();
+        $store = Store::factory()->create([
+            'status' => 'pending',
+            'razon_social' => null,
+            'rep_legal_nombre' => null,
+            'rep_legal_dni' => null,
+            'direccion_fiscal' => null,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->putJson("/api/stores/{$store->id}/status", [
+                'status' => 'approved',
+            ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonPath('message', 'No se puede aprobar la tienda: el perfil esta incompleto.')
+            ->assertJsonCount(4, 'missing_fields')
+            ->assertJsonPath('missing_fields.0', 'Razon social');
+
+        $this->assertDatabaseHas('stores', [
+            'id' => $store->id,
+            'status' => 'pending',
+            'approved_at' => null,
+        ]);
     }
 
     public function test_admin_can_reject_store(): void

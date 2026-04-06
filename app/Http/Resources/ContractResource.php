@@ -24,6 +24,8 @@ final class ContractResource extends JsonResource
             'start' => $this->start_date?->toDateString(),
             'end' => $this->end_date?->toDateString(),
             'storage_path' => $this->file_path ?? 'Pendiente de Carga',
+            'signed_file_path' => $this->signed_file_path,
+            'has_signed_doc' => ! empty($this->signed_file_path),
             'notes' => $this->notes,
             'expiryUrgency' => $this->expiry_urgency,
             'auditTrail' => $this->whenLoaded('auditTrails', fn () => $this->auditTrails->map(fn ($trail) => [

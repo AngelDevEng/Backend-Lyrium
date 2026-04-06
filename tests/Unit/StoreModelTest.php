@@ -57,6 +57,31 @@ final class StoreModelTest extends TestCase
         $this->assertTrue($store->owner->is($user));
     }
 
+    public function test_profile_is_complete_when_required_fields_are_present(): void
+    {
+        $store = Store::factory()->withCompleteProfile()->create();
+
+        $this->assertTrue($store->isProfileComplete());
+        $this->assertSame([], $store->missingProfileFields());
+    }
+
+    public function test_missing_profile_fields_returns_missing_labels(): void
+    {
+        $store = Store::factory()->create([
+            'razon_social' => null,
+            'rep_legal_nombre' => 'Maria Perez',
+            'rep_legal_dni' => null,
+            'direccion_fiscal' => null,
+        ]);
+
+        $this->assertFalse($store->isProfileComplete());
+        $this->assertSame([
+            'Razon social',
+            'DNI del representante legal',
+            'Direccion fiscal',
+        ], $store->missingProfileFields());
+    }
+
     public function test_store_soft_deletes(): void
     {
         $store = Store::factory()->create();

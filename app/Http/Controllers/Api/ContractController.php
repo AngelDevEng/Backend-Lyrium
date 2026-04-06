@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateContractRequest;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
 use App\Models\Store;
+use App\Services\ContractDocumentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -237,16 +238,106 @@ final class ContractController extends Controller
 
     /**
      * GET /api/contracts/{id}/download
+     * Descarga el Word original (file_path).
      */
     public function download(string $id)
     {
         $contract = Contract::findOrFail($id);
 
-        if (! $contract->file_path || ! Storage::disk('private')->exists($contract->file_path)) {
+        if (! $contract->file_path || ! Storage::disk('local')->exists($contract->file_path)) {
             return response()->json(['error' => 'No hay documento cargado.'], 404);
         }
 
-        return Storage::disk('private')->download($contract->file_path);
+        return Storage::disk('local')->download(
+            $contract->file_path,
+            "convenio_{$contract->contract_number}.docx"
+        );
+    }
+
+    /**
+     * GET /api/contracts/{id}/download-signed
+     * Admin descarga el documento firmado subido por el vendedor.
+     */
+    public function downloadSigned(string $id)
+    {
+        $contract = Contract::findOrFail($id);
+
+        if (! $contract->signed_file_path || ! Storage::disk('local')->exists($contract->signed_file_path)) {
+            return response()->json(['error' => 'No hay documento firmado cargado.'], 404);
+        }
+
+        $ext = pathinfo($contract->signed_file_path, PATHINFO_EXTENSION);
+
+        return Storage::disk('local')->download(
+            $contract->signed_file_path,
+            "firmado_{$contract->contract_number}.{$ext}"
+        );
+    }
+
+    // ── Template del convenio (admin) ────────────────────────────────────────
+
+    /**
+     * GET /api/admin/contracts/template/info
+     * Informa si existe un template subido y su fecha de subida.
+     */
+    public function templateInfo(): JsonResponse
+    {
+        $exists   = Storage::disk('local')->exists(ContractDocumentService::TEMPLATE_PATH);
+        $uploadedAt = null;
+
+        if ($exists) {
+            $uploadedAt = date('Y-m-d H:i:s', Storage::disk('local')->lastModified(ContractDocumentService::TEMPLATE_PATH));
+        }
+
+        return response()->json([
+            'has_template' => $exists,
+            'uploaded_at'  => $uploadedAt,
+            'placeholders' => [
+                '${contract_number}', '${company}', '${ruc}',
+                '${rep_nombre}', '${rep_dni}', '${direccion}',
+                '${email}', '${plan}', '${commission}',
+                '${fecha_inicio}', '${ciudad}', '${year}',
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/admin/contracts/template
+     * Sube un nuevo template Word (.docx).
+     */
+    public function uploadTemplate(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:docx|max:5120',
+        ]);
+
+        $file = $request->file('file');
+
+        // Guardar sobrescribiendo el template anterior
+        $dir  = dirname(ContractDocumentService::TEMPLATE_PATH);
+        $name = basename(ContractDocumentService::TEMPLATE_PATH);
+        $file->storeAs($dir, $name, 'local');
+
+        return response()->json([
+            'message'     => 'Template subido correctamente',
+            'uploaded_at' => now()->toDateTimeString(),
+        ]);
+    }
+
+    /**
+     * GET /api/admin/contracts/template/download
+     * Descarga el template Word actual.
+     */
+    public function downloadTemplate()
+    {
+        if (! Storage::disk('local')->exists(ContractDocumentService::TEMPLATE_PATH)) {
+            return response()->json(['error' => 'No hay template subido'], 404);
+        }
+
+        return Storage::disk('local')->download(
+            ContractDocumentService::TEMPLATE_PATH,
+            'convenio_template.docx'
+        );
     }
 
     /**
@@ -278,7 +369,7 @@ final class ContractController extends Controller
             return response()->json(['message' => 'No tienes un contrato generado aún'], 404);
         }
 
-        return response()->json(new ContractResource($contract->load('auditTrails')));
+        return response()->json(['data' => new ContractResource($contract->load('auditTrails'))]);
     }
 
     /**
@@ -335,21 +426,19 @@ final class ContractController extends Controller
         $companySlug = preg_replace('/[^a-zA-Z0-9_]/', '_', $contract->company ?? 'empresa');
         $year        = now()->year;
         $path        = $file->storeAs(
-            "private/contracts/{$companySlug}/{$year}/signed",
+            "contracts/{$companySlug}/{$year}/signed",
             "firmado_{$contract->contract_number}." . $file->getClientOriginalExtension(),
             'local'
         );
 
-        $contract->update(['file_path' => $path]);
+        // Guardar en signed_file_path para no sobreescribir el Word original (file_path)
+        $contract->update(['signed_file_path' => $path]);
 
         $contract->addAuditEntry(
             'Documento firmado subido por el vendedor — pendiente de verificación por admin',
             $request->user()->name ?? 'Vendedor'
         );
 
-        return response()->json([
-            'message'  => 'Documento firmado recibido correctamente. El equipo de Lyrium lo verificará pronto.',
-            'contract' => new ContractResource($contract->fresh()->load('auditTrails')),
-        ]);
+        return response()->json(new ContractResource($contract->fresh()->load('auditTrails')));
     }
 }

@@ -156,6 +156,13 @@ final class StoreController extends Controller
             'reason' => 'nullable|string|max:500',
         ]);
 
+        if ($data['status'] === 'approved' && ! $store->isProfileComplete()) {
+            return response()->json([
+                'message' => 'No se puede aprobar la tienda: el perfil esta incompleto.',
+                'missing_fields' => $store->missingProfileFields(),
+            ], 422);
+        }
+
         $updateData = ['status' => $data['status']];
 
         if ($data['status'] === 'approved') {
