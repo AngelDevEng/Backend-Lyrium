@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Store;
 use App\Models\StoreProfileRequest;
+use App\Models\User;
+use App\Notifications\ProfileRequestNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -158,6 +160,12 @@ final class ProfileRequestController extends Controller
                 'profile_status' => 'pending_review',
                 'profile_updated_at' => now(),
             ]);
+
+            // Notificar a todos los admins en tiempo real
+            $profileRequest->load('store.owner');
+            User::role('administrator')->each(
+                fn (User $admin) => $admin->notify(new ProfileRequestNotification($profileRequest))
+            );
 
             return response()->json([
                 'message' => 'Solicitud enviada para revisión',
